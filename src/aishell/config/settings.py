@@ -142,3 +142,7 @@ def load_settings(config_path: Optional[Path] = None) -> AishellSettings:
     if config_path and config_path.is_file():
         os.environ["AISHELL_CONFIG_FILE"] = str(config_path)
     return AishellSettings()
+
+
+get_settings = load_settings
+
