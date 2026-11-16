@@ -12,7 +12,7 @@ Terminal AI Shell (`aishell`) bridges natural language intent with safe Linux te
 
 - [x] **Phase 1: Shell Execution Engine & Configuration** - Managed PTY execution, subshell state synchronization, and persistent audit logging
 - [x] **Phase 2: Interactive REPL & Streaming Terminal UI** - prompt_toolkit REPL loop, streaming markdown rendering, and syntax highlighting
-- [ ] **Phase 3: Multi-Provider LLM Integration** - Pluggable provider architecture for Google Gemini, OpenAI, Anthropic, and Ollama
+- [x] **Phase 3: Multi-Provider LLM Integration** - Pluggable provider architecture for Google Gemini, OpenAI, Anthropic, and Ollama
 - [ ] **Phase 4: System Context Inspection & Privacy Guard** - Linux environment discovery, credential scrubbing, and prompt injection defense
 - [ ] **Phase 5: Safety Gate & Controlled Command Execution** - Blast-radius risk categorization, confirmation gate, and inline command editing
 - [ ] **Phase 6: Multi-Turn Orchestration, Error Diagnostics & Remediation Loop** - Exit code diagnosis, automated remediation suggestions, and context compaction
@@ -79,13 +79,13 @@ Plans:
 
 Plans:
 **Wave 1**
-- [ ] 03-01-PLAN.md — Provider Core Schema, Exception Hierarchy, System Prompts & Resilient Proposal Parser
+- [x] 03-01-PLAN.md — Provider Core Schema, Exception Hierarchy, System Prompts & Resilient Proposal Parser
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 03-02-PLAN.md — Provider Adapters (Ollama, Gemini, OpenAI, Anthropic) & Provider Factory
+- [x] 03-02-PLAN.md — Provider Adapters (Ollama, Gemini, OpenAI, Anthropic) & Provider Factory
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 03-03-PLAN.md — REPL & One-Shot Provider Integration, CLI Flags & Runtime Switching
+- [x] 03-03-PLAN.md — REPL & One-Shot Provider Integration, CLI Flags & Runtime Switching
 
 ### Phase 4: System Context Inspection & Privacy Guard
 **Goal**: Users get platform-accurate command proposals while sensitive credentials and untrusted inputs are securely sanitized.
