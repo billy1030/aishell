@@ -32,8 +32,13 @@ Terminal AI Shell (`aishell`) bridges natural language intent with safe Linux te
 **Plans:** 3 plans
 
 Plans:
+**Wave 1**
 - [ ] 01-01-PLAN.md — Project Scaffold, Layered Configuration & Tracer CLI
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 01-02-PLAN.md — SQLite Audit Storage & Bounded Session History
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 01-03-PLAN.md — Shell Builtin Interceptor, Managed PTY Execution & Signal Routing
 
 ### Phase 2: Interactive REPL & Streaming Terminal UI
