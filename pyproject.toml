@@ -21,6 +21,10 @@ dependencies = [
     "psutil>=7.0.0",
     "prompt-toolkit>=3.0.50,<4.0.0",
     "pygments>=2.19.0,<3.0.0",
+    "openai>=3.50.0,<4.0.0",
+    "google-genai>=3.3.0,<4.0.0",
+    "anthropic>=2.8.0,<3.0.0",
+    "httpx>=0.28.0,<1.0.0",
 ]
 
 [project.optional-dependencies]
