@@ -52,8 +52,18 @@ Plans:
   3. User sees AI responses rendered in real-time with streaming Markdown, live spinners, and syntax-highlighted shell commands.
   4. User can press `Ctrl+C` during active streaming to halt generation immediately without terminating the REPL session.
   5. User can execute one-shot queries (`aishell -c "query"`) or pipe input directly from Unix stdin (`cat log | aishell "diagnose"`).
-**Plans**: TBD
+**Plans:** 3 plans
 **UI hint**: yes
+
+Plans:
+**Wave 1**
+- [ ] 02-01-PLAN.md — Terminal UI Streaming Renderer & One-Shot CLI / Stdin Pipeline
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 02-02-PLAN.md — SQLite REPL History Adapter & System Status Banner
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 02-03-PLAN.md — Interactive REPL Session, Multiline Input, Signal Routing & CLI Integration
 
 ### Phase 3: Multi-Provider LLM Integration
 **Goal**: Users can generate shell solutions using their choice of cloud LLMs (Gemini, OpenAI, Anthropic) or local offline models (Ollama).
