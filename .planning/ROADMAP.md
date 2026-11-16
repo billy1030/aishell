@@ -11,7 +11,7 @@ Terminal AI Shell (`aishell`) bridges natural language intent with safe Linux te
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 1: Shell Execution Engine & Configuration** - Managed PTY execution, subshell state synchronization, and persistent audit logging
-- [ ] **Phase 2: Interactive REPL & Streaming Terminal UI** - prompt_toolkit REPL loop, streaming markdown rendering, and syntax highlighting
+- [x] **Phase 2: Interactive REPL & Streaming Terminal UI** - prompt_toolkit REPL loop, streaming markdown rendering, and syntax highlighting
 - [ ] **Phase 3: Multi-Provider LLM Integration** - Pluggable provider architecture for Google Gemini, OpenAI, Anthropic, and Ollama
 - [ ] **Phase 4: System Context Inspection & Privacy Guard** - Linux environment discovery, credential scrubbing, and prompt injection defense
 - [ ] **Phase 5: Safety Gate & Controlled Command Execution** - Blast-radius risk categorization, confirmation gate, and inline command editing
@@ -57,13 +57,13 @@ Plans:
 
 Plans:
 **Wave 1**
-- [ ] 02-01-PLAN.md — Terminal UI Streaming Renderer & One-Shot CLI / Stdin Pipeline
+- [x] 02-01-PLAN.md — Terminal UI Streaming Renderer & One-Shot CLI / Stdin Pipeline
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 02-02-PLAN.md — SQLite REPL History Adapter & System Status Banner
+- [x] 02-02-PLAN.md — SQLite REPL History Adapter & System Status Banner
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 02-03-PLAN.md — Interactive REPL Session, Multiline Input, Signal Routing & CLI Integration
+- [x] 02-03-PLAN.md — Interactive REPL Session, Multiline Input, Signal Routing & CLI Integration
 
 ### Phase 3: Multi-Provider LLM Integration
 **Goal**: Users can generate shell solutions using their choice of cloud LLMs (Gemini, OpenAI, Anthropic) or local offline models (Ollama).
