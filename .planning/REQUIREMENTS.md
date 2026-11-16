@@ -104,10 +104,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CONF-03 | Phase 6 | Pending |
 
 **Coverage:**
-- v1 requirements: 24 total
-- Mapped to phases: 24
+- v1 requirements: 25 total
+- Mapped to phases: 25
 - Unmapped: 0 ✓
 
 ---
-*Requirements defined: 2026-11-16*
-*Last updated: 2026-11-16 after initial definition*
+*Requirements defined: 2026-11-16*  
+*Last updated: 2026-11-16 after roadmap creation*
