@@ -13,7 +13,7 @@ Terminal AI Shell (`aishell`) bridges natural language intent with safe Linux te
 - [x] **Phase 1: Shell Execution Engine & Configuration** - Managed PTY execution, subshell state synchronization, and persistent audit logging
 - [x] **Phase 2: Interactive REPL & Streaming Terminal UI** - prompt_toolkit REPL loop, streaming markdown rendering, and syntax highlighting
 - [x] **Phase 3: Multi-Provider LLM Integration** - Pluggable provider architecture for Google Gemini, OpenAI, Anthropic, and Ollama
-- [ ] **Phase 4: System Context Inspection & Privacy Guard** - Linux environment discovery, credential scrubbing, and prompt injection defense
+- [x] **Phase 4: System Context Inspection & Privacy Guard** - Linux environment discovery, credential scrubbing, and prompt injection defense
 - [ ] **Phase 5: Safety Gate & Controlled Command Execution** - Blast-radius risk categorization, confirmation gate, and inline command editing
 - [ ] **Phase 6: Multi-Turn Orchestration, Error Diagnostics & Remediation Loop** - Exit code diagnosis, automated remediation suggestions, and context compaction
 
@@ -101,13 +101,13 @@ Plans:
 
 Plans:
 **Wave 1**
-- [ ] 04-01-PLAN.md — System Context Schema & Host Environment Inspector
+- [x] 04-01-PLAN.md — System Context Schema & Host Environment Inspector
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 04-02-PLAN.md — Privacy Guard, Credential Redaction & Prompt Injection Sanitizer
+- [x] 04-02-PLAN.md — Privacy Guard, Credential Redaction & Prompt Injection Sanitizer
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 04-03-PLAN.md — User Context Transparency (/context & --context) & Provider Context Injection
+- [x] 04-03-PLAN.md — User Context Transparency (/context & --context) & Provider Context Injection
 
 ### Phase 5: Safety Gate & Controlled Command Execution
 **Goal**: Operators review and approve proposed commands with visual risk badges and inline editing before any command touches the host.
@@ -139,9 +139,9 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Shell Execution Engine & Configuration | 0/0 | Not started | - |
-| 2. Interactive REPL & Streaming Terminal UI | 0/0 | Not started | - |
-| 3. Multi-Provider LLM Integration | 0/0 | Not started | - |
-| 4. System Context Inspection & Privacy Guard | 0/0 | Not started | - |
-| 5. Safety Gate & Controlled Command Execution | 0/0 | Not started | - |
-| 6. Multi-Turn Orchestration, Error Diagnostics & Remediation Loop | 0/0 | Not started | - |
+| 1. Shell Execution Engine & Configuration | 3/3 | Complete | 2026-11-16 |
+| 2. Interactive REPL & Streaming Terminal UI | 3/3 | Complete | 2026-11-16 |
+| 3. Multi-Provider LLM Integration | 3/3 | Complete | 2026-11-16 |
+| 4. System Context Inspection & Privacy Guard | 3/3 | Complete | 2026-11-16 |
+| 5. Safety Gate & Controlled Command Execution | 0/3 | Not started | - |
+| 6. Multi-Turn Orchestration, Error Diagnostics & Remediation Loop | 0/3 | Not started | - |
