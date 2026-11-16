@@ -166,6 +166,13 @@ class InteractiveREPL:
             else:
                 self.console.print(f"[bold cyan]Active model:[/bold cyan] {self.provider.model} (provider: {self.provider.name})")
             return False
+        elif action in (":context", "/context", "context"):
+            from aishell.context.display import render_context_table
+            from aishell.context.inspector import inspect_system_context
+
+            ctx_info = inspect_system_context(cwd=os.getcwd())
+            render_context_table(ctx_info, console=self.console)
+            return False
         return False
 
     def _print_help(self) -> None:
@@ -174,6 +181,7 @@ class InteractiveREPL:
             "[bold cyan]aishell Interactive REPL Guide[/bold cyan]\n\n"
             "• [bold green]Natural Language Query:[/bold green] Type your question or intent directly\n"
             "• [bold green]Direct Shell Command:[/bold green] Prefix with [bold yellow]![/bold yellow] or run standard builtins (`cd`, `export`)\n"
+            "• [bold green]System Context:[/bold green] Type [bold yellow]/context[/bold yellow] to inspect host facts and sanitized environment\n"
             "• [bold green]Switch Provider / Model:[/bold green] [bold yellow]/provider <name>[/bold yellow] or [bold yellow]/model <name>[/bold yellow]\n"
             "• [bold green]Multiline Input:[/bold green] Press [bold yellow]Alt+Enter[/bold yellow] or end line with trailing [bold yellow]\\[/bold yellow]\n"
             "• [bold green]History Search:[/bold green] Press [bold yellow]Ctrl+R[/bold yellow] to reverse search command history\n"
@@ -193,7 +201,7 @@ class InteractiveREPL:
         if (
             raw.startswith(":")
             or raw.startswith("/")
-            or first_token in ("exit", "quit", "help", "clear", "provider", "model")
+            or first_token in ("exit", "quit", "help", "clear", "provider", "model", "context")
         ):
             if self.handle_meta_command(raw):
                 raise EOFError()
@@ -219,8 +227,15 @@ class InteractiveREPL:
         self.is_streaming = True
         try:
             import asyncio
+            from aishell.context.inspector import inspect_system_context
+            from aishell.context.sanitizer import format_system_observation
             from aishell.providers.base import ChatMessage
             from aishell.providers.errors import ProviderError
+            from aishell.providers.prompts import SYSTEM_PROMPT_CHAT
+
+            context_info = inspect_system_context(cwd=os.getcwd())
+            observation = format_system_observation(context_info)
+            system_instruction = f"{SYSTEM_PROMPT_CHAT}\n\n{observation}"
 
             messages = [ChatMessage(role="user", content=raw)]
 
@@ -234,7 +249,7 @@ class InteractiveREPL:
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
 
-                agen = self.provider.stream_chat(messages)
+                agen = self.provider.stream_chat(messages, system_prompt=system_instruction)
                 while True:
                     try:
                         token = loop.run_until_complete(agen.__anext__())
