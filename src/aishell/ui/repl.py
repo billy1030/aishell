@@ -13,6 +13,7 @@ from rich.console import Console
 from rich.panel import Panel
 
 from aishell.config.settings import AishellSettings, get_settings
+from aishell.providers.base import BaseProvider
 from aishell.ui.banner import format_prompt, get_prompt_style, render_banner
 from aishell.ui.history import SQLiteHistory
 from aishell.ui.renderer import RichStreamRenderer
@@ -31,6 +32,9 @@ class InteractiveREPL:
         console: Optional[Console] = None,
         history: Optional[SQLiteHistory] = None,
         executor_fn: Optional[Callable[[str], int]] = None,
+        provider_name: Optional[str] = None,
+        model_name: Optional[str] = None,
+        provider: Optional[BaseProvider] = None,
         pt_input=None,
         pt_output=None,
     ) -> None:
@@ -40,6 +44,20 @@ class InteractiveREPL:
         self.history = history or SQLiteHistory(session_id=self.session_id)
         self.renderer = RichStreamRenderer(console=self.console)
         self.executor_fn = executor_fn
+
+        from aishell.providers.factory import get_provider
+
+        if provider:
+            self.provider = provider
+        else:
+            p_name = provider_name or self.settings.general.default_provider
+            m_name = model_name or self.settings.general.model
+            self.provider = get_provider(
+                name=p_name,
+                model=m_name,
+                settings=self.settings,
+                validate=False,
+            )
 
         self.last_interrupt_time: float = 0.0
         self.is_streaming: bool = False
@@ -94,25 +112,59 @@ class InteractiveREPL:
 
     def get_prompt_tokens(self) -> list:
         """Return dynamic prompt tokens reflecting current working directory and model."""
+        model_display = f"{self.provider.name}:{self.provider.model}" if hasattr(self, "provider") and self.provider else self.settings.general.model
         return format_prompt(
             cwd=os.getcwd(),
-            model_name=self.settings.general.model,
+            model_name=model_display,
         )
 
     def handle_meta_command(self, cmd: str) -> bool:
-        """Handle internal meta commands (:exit, :quit, /clear, /help).
+        """Handle internal meta commands (:exit, :quit, /clear, /help, /provider, /model).
 
         Returns True if REPL should terminate, False otherwise.
         """
-        clean = cmd.strip().lower()
-        if clean in (":exit", ":quit", "/exit", "/quit", "exit", "quit"):
+        parts = cmd.strip().split(maxsplit=1)
+        action = parts[0].lower()
+        arg = parts[1].strip() if len(parts) > 1 else None
+
+        if action in (":exit", ":quit", "/exit", "/quit", "exit", "quit"):
             self.console.print("[dim]Goodbye![/dim]")
             return True
-        elif clean in (":clear", "/clear", "clear"):
+        elif action in (":clear", "/clear", "clear"):
             self.console.clear()
             return False
-        elif clean in (":help", "/help", "help"):
+        elif action in (":help", "/help", "help"):
             self._print_help()
+            return False
+        elif action in (":provider", "/provider", "provider"):
+            from aishell.providers.factory import get_provider, get_supported_providers
+
+            if arg:
+                try:
+                    self.provider = get_provider(name=arg, settings=self.settings, validate=False)
+                    self.console.print(f"[green]Switched active provider to '{self.provider.name}' (model: {self.provider.model})[/green]")
+                except Exception as exc:
+                    self.renderer.render_error(str(exc))
+            else:
+                supported = ", ".join(get_supported_providers())
+                self.console.print(f"[bold cyan]Active provider:[/bold cyan] {self.provider.name} (model: {self.provider.model})\n[dim]Supported: {supported}[/dim]")
+            return False
+        elif action in (":model", "/model", "model"):
+            from aishell.providers.factory import get_provider
+
+            if arg:
+                try:
+                    self.provider = get_provider(
+                        name=self.provider.name,
+                        model=arg,
+                        settings=self.settings,
+                        validate=False,
+                    )
+                    self.console.print(f"[green]Switched model to '{self.provider.model}' on provider '{self.provider.name}'[/green]")
+                except Exception as exc:
+                    self.renderer.render_error(str(exc))
+            else:
+                self.console.print(f"[bold cyan]Active model:[/bold cyan] {self.provider.model} (provider: {self.provider.name})")
             return False
         return False
 
@@ -122,6 +174,7 @@ class InteractiveREPL:
             "[bold cyan]aishell Interactive REPL Guide[/bold cyan]\n\n"
             "• [bold green]Natural Language Query:[/bold green] Type your question or intent directly\n"
             "• [bold green]Direct Shell Command:[/bold green] Prefix with [bold yellow]![/bold yellow] or run standard builtins (`cd`, `export`)\n"
+            "• [bold green]Switch Provider / Model:[/bold green] [bold yellow]/provider <name>[/bold yellow] or [bold yellow]/model <name>[/bold yellow]\n"
             "• [bold green]Multiline Input:[/bold green] Press [bold yellow]Alt+Enter[/bold yellow] or end line with trailing [bold yellow]\\[/bold yellow]\n"
             "• [bold green]History Search:[/bold green] Press [bold yellow]Ctrl+R[/bold yellow] to reverse search command history\n"
             "• [bold green]Interrupt Stream:[/bold green] Press [bold yellow]Ctrl+C[/bold yellow] to halt active generation\n"
@@ -136,7 +189,12 @@ class InteractiveREPL:
             return
 
         # Check for meta commands first
-        if raw.startswith(":") or raw.startswith("/") or raw in ("exit", "quit", "help", "clear"):
+        first_token = raw.split()[0].lower()
+        if (
+            raw.startswith(":")
+            or raw.startswith("/")
+            or first_token in ("exit", "quit", "help", "clear", "provider", "model")
+        ):
             if self.handle_meta_command(raw):
                 raise EOFError()
             return
@@ -157,11 +215,43 @@ class InteractiveREPL:
                 execute_pipeline(cmd_to_run)
             return
 
-        # Natural language query - Stream tokens (Dispatches to Phase 3 LLM in next phase)
+        # Natural language query - Stream tokens from active AI provider
         self.is_streaming = True
         try:
-            tokens = [f"I received your query: **{raw}**\n\n*(AI model provider integration will stream here in Phase 3)*\n"]
-            self.renderer.stream_markdown(tokens)
+            import asyncio
+            from aishell.providers.base import ChatMessage
+            from aishell.providers.errors import ProviderError
+
+            messages = [ChatMessage(role="user", content=raw)]
+
+            def _token_generator():
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_closed():
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+
+                agen = self.provider.stream_chat(messages)
+                while True:
+                    try:
+                        token = loop.run_until_complete(agen.__anext__())
+                        yield token
+                    except StopAsyncIteration:
+                        break
+
+            self.renderer.stream_markdown(_token_generator())
+
+        except KeyboardInterrupt:
+            # Re-raise so run() handles generation cancellation without session death
+            raise
+        except ProviderError as err:
+            guidance_text = f"\n\n[bold yellow]Guidance:[/bold yellow] {err.guidance}" if err.guidance else ""
+            self.renderer.render_error(f"{err.message}{guidance_text}")
+        except Exception as exc:
+            self.renderer.render_error(f"Generation error: {exc}")
         finally:
             self.is_streaming = False
 
