@@ -39,10 +39,18 @@ console = Console()
 _SESSION_ID = str(uuid.uuid4())[:8]
 
 
+def is_interactive_terminal() -> bool:
+    """Determine whether standard input is attached to an interactive terminal."""
+    try:
+        return bool(sys.stdin and hasattr(sys.stdin, "isatty") and sys.stdin.isatty())
+    except Exception:
+        return False
+
+
 def read_piped_stdin() -> Optional[str]:
     """Read piped stdin if available, capped to 512KB per T-02-01."""
     try:
-        if sys.stdin and hasattr(sys.stdin, "isatty") and not sys.stdin.isatty():
+        if not is_interactive_terminal():
             raw_text = sys.stdin.read(MAX_STDIN_BYTES + 1024)
             if not raw_text:
                 return None
@@ -163,8 +171,22 @@ def main(
             execute_one_shot(query=command, piped_stdin=piped_stdin)
             raise typer.Exit(code=0)
 
-        # Bare aishell launches REPL (Wired in Phase 2 Plan 03)
-        console.print("[dim]Interactive REPL will be launched here (Phase 2). Use 'aishell exec <cmd>' for command execution.[/dim]")
+        # Check if stdin is a TTY for interactive REPL per REPL-01
+        if is_interactive_terminal():
+            from aishell.ui.repl import InteractiveREPL
+
+            settings = get_settings()
+            repl = InteractiveREPL(settings=settings, console=console)
+            try:
+                repl.run()
+            except (KeyboardInterrupt, EOFError):
+                pass
+            raise typer.Exit(code=0)
+        else:
+            # Fallback if stdin is not a TTY and no query provided
+            console.print("[yellow]aishell: no command or query provided and standard input is not a terminal.[/yellow]")
+            console.print("Run 'aishell --help' for usage, or pipe input via 'cat file | aishell'.")
+            raise typer.Exit(code=0)
 
 
 @app.command(name="ask", hidden=True)
