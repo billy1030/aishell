@@ -50,3 +50,4 @@ Operators review and approve proposed commands with visual risk badges and inlin
   - `prompt_confirmation(proposal: CommandProposal, session: Optional[PromptSession] = None) -> Tuple[GateAction, Optional[str]]`
   - Wire `SafetyGate` directly into `execute_one_shot()` and `InteractiveREPL.dispatch_input()`.
 - **Rationale**: Single point of truth for risk rules and confirmation logic across both one-shot CLI execution and interactive REPL sessions.
+

@@ -30,3 +30,4 @@
 - **Question**: Where should the safety engine code reside?
 - **Resolution**: Create dedicated package `src/aishell/safety/` with `classifier.py`, `gate.py`, and `display.py`, exported through `src/aishell/safety/__init__.py`.
 - **Status**: Locked (D-05).
+

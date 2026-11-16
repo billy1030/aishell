@@ -118,7 +118,17 @@ Plans:
   1. System categorizes proposed shell commands into risk tiers (Safe / Mutating / High-Risk) with visual risk badges.
   2. System halts before execution and presents an interactive confirmation gate (`[y/N/e]`) requiring explicit operator approval.
   3. Operator can press `[e]dit` at the confirmation gate to load the proposed command into the prompt buffer for inline modifications before running.
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+**Wave 1**
+- [ ] 05-01-PLAN.md — Risk Classification Engine & Static Heuristics
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 05-02-PLAN.md — Proposal Card Presentation & Interactive Confirmation Gate
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 05-03-PLAN.md — Inline Command Editing & CLI/REPL Safety Gate Integration
 
 ### Phase 6: Multi-Turn Orchestration, Error Diagnostics & Remediation Loop
 **Goal**: Operators can troubleshoot failures seamlessly through automated root-cause diagnosis and bounded remediation suggestions within long-running sessions.
