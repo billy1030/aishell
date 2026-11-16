@@ -18,7 +18,7 @@ def mock_default_provider(monkeypatch):
     mock_p.name = "mock"
     mock_p.model = "mock-model"
 
-    async def fake_stream(messages):
+    async def fake_stream(messages, *args, **kwargs):
         for msg in messages:
             yield msg.content
 

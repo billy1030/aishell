@@ -15,7 +15,7 @@ def test_cli_oneshot_provider_streaming_success():
     mock_provider.name = "gemini"
     mock_provider.model = "gemini-2.0-flash"
 
-    async def fake_stream(_messages):
+    async def fake_stream(_messages, *args, **kwargs):
         yield "To list files, use: "
         yield "`ls -la`"
 

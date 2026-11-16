@@ -156,6 +156,14 @@ def execute_one_shot(
             validate=True,
         )
 
+        from aishell.context.inspector import inspect_system_context
+        from aishell.context.sanitizer import format_system_observation
+        from aishell.providers.prompts import SYSTEM_PROMPT_CHAT
+
+        context_info = inspect_system_context()
+        observation = format_system_observation(context_info)
+        system_instruction = f"{SYSTEM_PROMPT_CHAT}\n\n{observation}"
+
         messages = [ChatMessage(role="user", content=combined_input)]
 
         def _token_generator():
@@ -168,7 +176,7 @@ def execute_one_shot(
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
 
-            agen = provider.stream_chat(messages)
+            agen = provider.stream_chat(messages, system_prompt=system_instruction)
             while True:
                 try:
                     token = loop.run_until_complete(agen.__anext__())
@@ -211,12 +219,25 @@ def main(
     version: Optional[bool] = typer.Option(
         None, "--version", "-v", help="Show aishell version"
     ),
+    show_context: Optional[bool] = typer.Option(
+        None,
+        "--context",
+        help="Inspect and display current system context and sanitized environment variables",
+    ),
 ) -> None:
     """Main aishell entrypoint."""
     if version:
         from aishell import __version__
 
         console.print(f"[bold cyan]aishell[/bold cyan] version [green]{__version__}[/green]")
+        raise typer.Exit(code=0)
+
+    if show_context:
+        from aishell.context.display import render_context_table
+        from aishell.context.inspector import inspect_system_context
+
+        ctx_info = inspect_system_context()
+        render_context_table(ctx_info, console=console)
         raise typer.Exit(code=0)
 
     # Check for piped stdin once and stash in ctx.obj
