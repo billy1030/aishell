@@ -10,7 +10,7 @@ Terminal AI Shell (`aishell`) bridges natural language intent with safe Linux te
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 1: Shell Execution Engine & Configuration** - Managed PTY execution, subshell state synchronization, and persistent audit logging
+- [x] **Phase 1: Shell Execution Engine & Configuration** - Managed PTY execution, subshell state synchronization, and persistent audit logging
 - [ ] **Phase 2: Interactive REPL & Streaming Terminal UI** - prompt_toolkit REPL loop, streaming markdown rendering, and syntax highlighting
 - [ ] **Phase 3: Multi-Provider LLM Integration** - Pluggable provider architecture for Google Gemini, OpenAI, Anthropic, and Ollama
 - [ ] **Phase 4: System Context Inspection & Privacy Guard** - Linux environment discovery, credential scrubbing, and prompt injection defense
@@ -33,13 +33,13 @@ Terminal AI Shell (`aishell`) bridges natural language intent with safe Linux te
 
 Plans:
 **Wave 1**
-- [ ] 01-01-PLAN.md — Project Scaffold, Layered Configuration & Tracer CLI
+- [x] 01-01-PLAN.md — Project Scaffold, Layered Configuration & Tracer CLI
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 01-02-PLAN.md — SQLite Audit Storage & Bounded Session History
+- [x] 01-02-PLAN.md — SQLite Audit Storage & Bounded Session History
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 01-03-PLAN.md — Shell Builtin Interceptor, Managed PTY Execution & Signal Routing
+- [x] 01-03-PLAN.md — Shell Builtin Interceptor, Managed PTY Execution & Signal Routing
 
 ### Phase 2: Interactive REPL & Streaming Terminal UI
 **Goal**: Users can interact through a rich terminal REPL with multiline editing, history search, and live-streamed markdown rendering.
