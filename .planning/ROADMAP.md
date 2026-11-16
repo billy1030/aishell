@@ -14,7 +14,7 @@ Terminal AI Shell (`aishell`) bridges natural language intent with safe Linux te
 - [x] **Phase 2: Interactive REPL & Streaming Terminal UI** - prompt_toolkit REPL loop, streaming markdown rendering, and syntax highlighting
 - [x] **Phase 3: Multi-Provider LLM Integration** - Pluggable provider architecture for Google Gemini, OpenAI, Anthropic, and Ollama
 - [x] **Phase 4: System Context Inspection & Privacy Guard** - Linux environment discovery, credential scrubbing, and prompt injection defense
-- [ ] **Phase 5: Safety Gate & Controlled Command Execution** - Blast-radius risk categorization, confirmation gate, and inline command editing
+- [x] **Phase 5: Safety Gate & Controlled Command Execution** - Blast-radius risk categorization, confirmation gate, and inline command editing
 - [ ] **Phase 6: Multi-Turn Orchestration, Error Diagnostics & Remediation Loop** - Exit code diagnosis, automated remediation suggestions, and context compaction
 
 ## Phase Details
@@ -122,13 +122,13 @@ Plans:
 
 Plans:
 **Wave 1**
-- [ ] 05-01-PLAN.md — Risk Classification Engine & Static Heuristics
+- [x] 05-01-PLAN.md — Risk Classification Engine & Static Heuristics
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 05-02-PLAN.md — Proposal Card Presentation & Interactive Confirmation Gate
+- [x] 05-02-PLAN.md — Proposal Card Presentation & Interactive Confirmation Gate
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 05-03-PLAN.md — Inline Command Editing & CLI/REPL Safety Gate Integration
+- [x] 05-03-PLAN.md — Inline Command Editing & CLI/REPL Safety Gate Integration
 
 ### Phase 6: Multi-Turn Orchestration, Error Diagnostics & Remediation Loop
 **Goal**: Operators can troubleshoot failures seamlessly through automated root-cause diagnosis and bounded remediation suggestions within long-running sessions.
@@ -153,5 +153,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Interactive REPL & Streaming Terminal UI | 3/3 | Complete | 2026-11-16 |
 | 3. Multi-Provider LLM Integration | 3/3 | Complete | 2026-11-16 |
 | 4. System Context Inspection & Privacy Guard | 3/3 | Complete | 2026-11-16 |
-| 5. Safety Gate & Controlled Command Execution | 0/3 | Not started | - |
+| 5. Safety Gate & Controlled Command Execution | 3/3 | Complete | 2026-11-16 |
 | 6. Multi-Turn Orchestration, Error Diagnostics & Remediation Loop | 0/3 | Not started | - |
