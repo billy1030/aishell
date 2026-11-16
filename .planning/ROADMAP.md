@@ -97,7 +97,17 @@ Plans:
   2. System sanitizes environment variables against an allowlist and redacts sensitive credentials (tokens, passwords, keys) via regex scanning.
   3. System encapsulates environmental observations inside untrusted boundary tags (`<system_observation untrusted="true">`) to prevent indirect prompt injection.
   4. User can inspect the exact context and system facts sent to the model via a `/context` meta-command.
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+**Wave 1**
+- [ ] 04-01-PLAN.md — System Context Schema & Host Environment Inspector
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 04-02-PLAN.md — Privacy Guard, Credential Redaction & Prompt Injection Sanitizer
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 04-03-PLAN.md — User Context Transparency (/context & --context) & Provider Context Injection
 
 ### Phase 5: Safety Gate & Controlled Command Execution
 **Goal**: Operators review and approve proposed commands with visual risk badges and inline editing before any command touches the host.
