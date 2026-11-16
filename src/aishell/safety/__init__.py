@@ -13,19 +13,23 @@ from aishell.safety.display import (
 )
 from aishell.safety.gate import (
     GateAction,
+    SafetyGate,
     is_interactive_stdin,
     prompt_confirmation,
+    prompt_edit_command,
 )
 
 __all__ = [
     "GateAction",
     "RiskLevel",
+    "SafetyGate",
     "classify_risk",
     "classify_single_command",
     "get_risk_badge",
     "is_interactive_stdin",
     "max_risk",
     "prompt_confirmation",
+    "prompt_edit_command",
     "render_proposal",
     "split_compound_command",
 ]

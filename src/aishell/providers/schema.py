@@ -59,44 +59,58 @@ def _extract_bash_block(text: str) -> Optional[str]:
     return None
 
 
-def parse_proposal_from_text(raw_text: str) -> CommandProposal:
-    """Parse a CommandProposal from model output with resilient dual-mode fallback.
+def extract_proposal_from_text(raw_text: str) -> Optional[CommandProposal]:
+    """Extract a CommandProposal from model output if structured JSON or a code block is found.
 
-    Mode 1: Structured JSON block (either raw or wrapped in ```json ``` markdown).
-    Mode 2: Markdown code fence fallback (```bash ... ```) with surrounding text as purpose.
+    Returns None if no structured proposal or command code block is present.
     """
     clean_text = raw_text.strip()
+    if not clean_text:
+        return None
 
     # Step 1: Attempt JSON extraction
     json_candidate = _extract_json_block(clean_text)
     if json_candidate:
         try:
             data = json.loads(json_candidate)
-            if isinstance(data, dict) and "command" in data:
+            if isinstance(data, dict) and "command" in data and str(data["command"]).strip():
                 return CommandProposal.model_validate(data)
         except Exception:
             pass
 
     # Step 2: Attempt fallback markdown bash code fence extraction
     bash_candidate = _extract_bash_block(clean_text)
-    if bash_candidate:
-        # Extract first non-code line as purpose if available
+    if bash_candidate and bash_candidate.strip():
         lines = [
             line.strip()
             for line in clean_text.splitlines()
             if line.strip() and not line.strip().startswith("```") and not line.strip().startswith("#")
         ]
         purpose = lines[0] if lines else "Execute proposed command"
-        # Determine requires_sudo heuristically
         requires_sudo = bash_candidate.startswith("sudo ")
         return CommandProposal(
-            command=bash_candidate,
+            command=bash_candidate.strip(),
             purpose=purpose,
             explanation="Extracted from markdown code block",
-            risk_tier="mutating",  # Safe default when structured classification is absent
+            risk_tier="mutating",
             requires_sudo=requires_sudo,
         )
 
+    return None
+
+
+def parse_proposal_from_text(raw_text: str) -> CommandProposal:
+    """Parse a CommandProposal from model output with resilient dual-mode fallback.
+
+    Mode 1: Structured JSON block (either raw or wrapped in ```json ``` markdown).
+    Mode 2: Markdown code fence fallback (```bash ... ```) with surrounding text as purpose.
+    Mode 3: Single-line fallback.
+    """
+    proposal = extract_proposal_from_text(raw_text)
+    if proposal is not None:
+        return proposal
+
+    clean_text = raw_text.strip()
     # Step 3: Single line command fallback
     first_line = clean_text.splitlines()[0] if clean_text else "true"
     return CommandProposal(

@@ -1,10 +1,15 @@
-"""Unit tests for interactive confirmation gate per D-03 and EXEC-02."""
+"""Unit tests for interactive confirmation gate and SafetyGate service per D-03, D-04, D-05."""
 
 import io
 from unittest.mock import patch
 from rich.console import Console
 from aishell.providers.schema import CommandProposal
-from aishell.safety.gate import GateAction, prompt_confirmation
+from aishell.safety.gate import (
+    GateAction,
+    SafetyGate,
+    prompt_confirmation,
+    prompt_edit_command,
+)
 
 
 def _make_proposal(command: str = "ls -la") -> CommandProposal:
@@ -95,3 +100,99 @@ def test_prompt_confirmation_non_interactive_guard():
         action = prompt_confirmation(proposal=proposal, console=console, input_fn=None)
         assert action == GateAction.CANCEL
         assert "Execution blocked" in output.getvalue()
+
+
+def test_prompt_edit_command_success():
+    """Verify prompt_edit_command returns modified string."""
+    output = io.StringIO()
+    console = Console(file=output, force_terminal=False)
+    edited = prompt_edit_command(
+        initial_command="ls",
+        console=console,
+        input_fn=lambda initial: "ls -lah /tmp",
+    )
+    assert edited == "ls -lah /tmp"
+
+
+def test_prompt_edit_command_cancel():
+    """Verify prompt_edit_command returns None on empty or interrupted input."""
+    output = io.StringIO()
+    console = Console(file=output, force_terminal=False)
+    # Empty string
+    assert (
+        prompt_edit_command(
+            initial_command="ls",
+            console=console,
+            input_fn=lambda initial: "",
+        )
+        is None
+    )
+    # KeyboardInterrupt
+    def _raise_interrupt(initial):
+        raise KeyboardInterrupt()
+
+    assert (
+        prompt_edit_command(
+            initial_command="ls",
+            console=console,
+            input_fn=_raise_interrupt,
+        )
+        is None
+    )
+
+
+def test_safety_gate_service_confirm():
+    """Verify SafetyGate returns approved command on explicit confirmation."""
+    gate = SafetyGate()
+    proposal = _make_proposal("ls -la")
+    output = io.StringIO()
+    console = Console(file=output, force_terminal=False)
+
+    cmd = gate.process_proposal(
+        proposal=proposal,
+        console=console,
+        input_fn=lambda prompt: "y",
+    )
+    assert cmd == "ls -la"
+
+
+def test_safety_gate_service_cancel():
+    """Verify SafetyGate returns None on cancellation."""
+    gate = SafetyGate()
+    proposal = _make_proposal("ls -la")
+    output = io.StringIO()
+    console = Console(file=output, force_terminal=False)
+
+    cmd = gate.process_proposal(
+        proposal=proposal,
+        console=console,
+        input_fn=lambda prompt: "n",
+    )
+    assert cmd is None
+
+
+def test_safety_gate_service_edit_and_confirm():
+    """Verify SafetyGate supports editing a command, re-presenting it, and confirming."""
+    gate = SafetyGate()
+    proposal = _make_proposal("touch test.txt")
+    output = io.StringIO()
+    console = Console(file=output, force_terminal=False)
+
+    responses = ["e", "y"]  # First prompt: edit; second prompt: confirm
+
+    def _mock_input(prompt):
+        return responses.pop(0)
+
+    def _mock_edit(initial):
+        return "touch test_edited.txt"
+
+    cmd = gate.process_proposal(
+        proposal=proposal,
+        console=console,
+        input_fn=_mock_input,
+        edit_fn=_mock_edit,
+    )
+    assert cmd == "touch test_edited.txt"
+    rendered = output.getvalue()
+    assert "touch test.txt" in rendered
+    assert "touch test_edited.txt" in rendered

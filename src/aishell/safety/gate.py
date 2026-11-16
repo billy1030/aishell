@@ -1,4 +1,4 @@
-"""Interactive confirmation gate with TTY safety guard per D-03 and EXEC-02."""
+"""Interactive confirmation gate and SafetyGate service per D-03, D-04, D-05, and EXEC-02, EXEC-03."""
 
 import sys
 from enum import Enum
@@ -6,6 +6,7 @@ from typing import Callable, Optional
 from rich.console import Console
 
 from aishell.providers.schema import CommandProposal
+from aishell.safety.classifier import RiskLevel, classify_risk
 from aishell.safety.display import render_proposal
 
 
@@ -77,3 +78,122 @@ def prompt_confirmation(
     except (KeyboardInterrupt, EOFError):
         c.print("\n[yellow]Command cancelled by operator.[/yellow]")
         return GateAction.CANCEL
+
+
+def prompt_edit_command(
+    initial_command: str,
+    console: Optional[Console] = None,
+    prompt_session: Optional[object] = None,
+    input_fn: Optional[Callable[[str], str]] = None,
+) -> Optional[str]:
+    """Launch inline prompt buffer editor with proposed command pre-loaded per D-04 and EXEC-03.
+
+    Allows the operator to modify flags, arguments, or file paths with full cursor
+    navigation and readline keybindings.
+    Returns the edited command string, or None if cancelled.
+    """
+    c = console or Console()
+
+    if input_fn is not None:
+        try:
+            res = input_fn(initial_command)
+            clean = res.strip()
+            return clean if clean else None
+        except (KeyboardInterrupt, EOFError):
+            c.print("\n[yellow]Editing cancelled by operator.[/yellow]")
+            return None
+
+    try:
+        if prompt_session is not None and hasattr(prompt_session, "prompt"):
+            edited = prompt_session.prompt("Edit command: ", default=initial_command)
+        else:
+            from prompt_toolkit import prompt as pt_prompt
+
+            try:
+                edited = pt_prompt("Edit command: ", default=initial_command)
+            except Exception:
+                c.print(f"[bold cyan]Edit command (press Enter to keep, or type new):[/bold cyan]\n[dim]{initial_command}[/dim]\n> ", end="")
+                val = input()
+                edited = val.strip() if val.strip() else initial_command
+
+        clean = edited.strip()
+        if not clean:
+            c.print("[yellow]Empty command; editing cancelled.[/yellow]")
+            return None
+        return clean
+
+    except (KeyboardInterrupt, EOFError):
+        c.print("\n[yellow]Editing cancelled by operator.[/yellow]")
+        return None
+
+
+class SafetyGate:
+    """Coordinates risk evaluation, proposal display, confirmation, and inline editing per D-05."""
+
+    def __init__(self, console: Optional[Console] = None) -> None:
+        self.console = console or Console()
+
+    def process_proposal(
+        self,
+        proposal: CommandProposal,
+        console: Optional[Console] = None,
+        prompt_session: Optional[object] = None,
+        input_fn: Optional[Callable[[str], str]] = None,
+        edit_fn: Optional[Callable[[str], str]] = None,
+    ) -> Optional[str]:
+        """Process a command proposal through the confirmation safety gate.
+
+        Returns:
+            The approved executable shell command string, or None if cancelled.
+        """
+        c = console or self.console
+        current_proposal = proposal
+
+        while True:
+            # 1. Reconcile risk tier with deterministic heuristics per D-01
+            effective_risk = classify_risk(
+                current_proposal.command,
+                model_risk=current_proposal.risk_tier,
+            )
+            current_proposal = current_proposal.model_copy(
+                update={"risk_tier": effective_risk.value}
+            )
+
+            # 2. Present confirmation prompt
+            action = prompt_confirmation(
+                proposal=current_proposal,
+                console=c,
+                input_fn=input_fn,
+            )
+
+            if action == GateAction.CONFIRM:
+                return current_proposal.command
+
+            elif action == GateAction.EDIT:
+                # 3. Launch inline editor
+                if edit_fn is not None:
+                    edited_cmd = edit_fn(current_proposal.command)
+                else:
+                    edited_cmd = prompt_edit_command(
+                        initial_command=current_proposal.command,
+                        console=c,
+                        prompt_session=prompt_session,
+                    )
+
+                if not edited_cmd:
+                    return None
+
+                # 4. Re-evaluate risk on the modified command and re-prompt confirmation per D-04
+                new_risk = classify_risk(edited_cmd)
+                current_proposal = CommandProposal(
+                    command=edited_cmd,
+                    purpose=f"Edited command (was: {current_proposal.purpose})",
+                    explanation=f"Modified by operator from original: {current_proposal.command}",
+                    risk_tier=new_risk.value,
+                    requires_sudo=edited_cmd.strip().startswith("sudo"),
+                    remediation=current_proposal.remediation,
+                )
+                continue
+
+            else:  # GateAction.CANCEL
+                return None

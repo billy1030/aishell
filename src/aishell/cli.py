@@ -166,6 +166,8 @@ def execute_one_shot(
 
         messages = [ChatMessage(role="user", content=combined_input)]
 
+        accumulated_tokens = []
+
         def _token_generator():
             try:
                 loop = asyncio.get_event_loop()
@@ -180,11 +182,24 @@ def execute_one_shot(
             while True:
                 try:
                     token = loop.run_until_complete(agen.__anext__())
+                    accumulated_tokens.append(token)
                     yield token
                 except StopAsyncIteration:
                     break
 
         renderer.stream_markdown(_token_generator())
+
+        # Safety Gate: check if response proposed a shell command per EXEC-02, D-05
+        full_text = "".join(accumulated_tokens)
+        from aishell.providers.schema import extract_proposal_from_text
+        from aishell.safety.gate import SafetyGate
+
+        proposal = extract_proposal_from_text(full_text)
+        if proposal and proposal.command.strip():
+            gate = SafetyGate(console=console)
+            approved_cmd = gate.process_proposal(proposal, console=console)
+            if approved_cmd:
+                execute_pipeline(approved_cmd)
 
     except ProviderError as err:
         guidance_text = f"\n\n[bold yellow]Guidance:[/bold yellow] {err.guidance}" if err.guidance else ""

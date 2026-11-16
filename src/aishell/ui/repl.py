@@ -14,6 +14,7 @@ from rich.panel import Panel
 
 from aishell.config.settings import AishellSettings, get_settings
 from aishell.providers.base import BaseProvider
+from aishell.safety.gate import SafetyGate
 from aishell.ui.banner import format_prompt, get_prompt_style, render_banner
 from aishell.ui.history import SQLiteHistory
 from aishell.ui.renderer import RichStreamRenderer
@@ -42,6 +43,7 @@ class InteractiveREPL:
         self.console = console or Console()
         self.session_id = str(uuid.uuid4())[:8]
         self.history = history or SQLiteHistory(session_id=self.session_id)
+        self.safety_gate = SafetyGate(console=self.console)
         self.renderer = RichStreamRenderer(console=self.console)
         self.executor_fn = executor_fn
 
@@ -239,6 +241,8 @@ class InteractiveREPL:
 
             messages = [ChatMessage(role="user", content=raw)]
 
+            accumulated_tokens = []
+
             def _token_generator():
                 try:
                     loop = asyncio.get_event_loop()
@@ -253,11 +257,34 @@ class InteractiveREPL:
                 while True:
                     try:
                         token = loop.run_until_complete(agen.__anext__())
+                        accumulated_tokens.append(token)
                         yield token
                     except StopAsyncIteration:
                         break
 
             self.renderer.stream_markdown(_token_generator())
+
+            # Safety Gate: check if response proposed a shell command per EXEC-02, D-05
+            full_text = "".join(accumulated_tokens)
+            from aishell.providers.schema import extract_proposal_from_text
+
+            proposal = extract_proposal_from_text(full_text)
+            if proposal and proposal.command.strip():
+                approved_cmd = self.safety_gate.process_proposal(
+                    proposal=proposal,
+                    console=self.console,
+                    prompt_session=self.session,
+                )
+                if approved_cmd:
+                    if self.executor_fn:
+                        try:
+                            self.executor_fn(approved_cmd)
+                        except Exception as exc:
+                            self.renderer.render_error(str(exc))
+                    else:
+                        from aishell.cli import execute_pipeline
+
+                        execute_pipeline(approved_cmd)
 
         except KeyboardInterrupt:
             # Re-raise so run() handles generation cancellation without session death
