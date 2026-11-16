@@ -9,8 +9,10 @@ from aishell.ui.banner import (
 )
 from aishell.ui.history import SQLiteHistory
 from aishell.ui.renderer import RichStreamRenderer, detect_terminal_capabilities
+from aishell.ui.repl import InteractiveREPL
 
 __all__ = [
+    "InteractiveREPL",
     "RichStreamRenderer",
     "SQLiteHistory",
     "contract_path",
