@@ -75,7 +75,17 @@ Plans:
   2. System asynchronously streams response tokens from any active provider adapter.
   3. System parses structured command proposals (command string, purpose, explanation, risk tier) from LLM responses.
   4. User receives actionable guidance for API connection errors, rate limits, or missing credentials instead of raw stack traces.
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+**Wave 1**
+- [ ] 03-01-PLAN.md — Provider Core Schema, Exception Hierarchy, System Prompts & Resilient Proposal Parser
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 03-02-PLAN.md — Provider Adapters (Ollama, Gemini, OpenAI, Anthropic) & Provider Factory
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 03-03-PLAN.md — REPL & One-Shot Provider Integration, CLI Flags & Runtime Switching
 
 ### Phase 4: System Context Inspection & Privacy Guard
 **Goal**: Users get platform-accurate command proposals while sensitive credentials and untrusted inputs are securely sanitized.
