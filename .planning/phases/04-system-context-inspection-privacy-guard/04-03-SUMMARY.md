@@ -69,3 +69,4 @@ coverage:
 3. **REPL Transparency**: Added `/context` and `:context` meta-commands in `InteractiveREPL` displaying the context table without terminating the session.
 4. **Provider Prompt Observation Injection**: Integrated `format_system_observation()` into both `execute_one_shot()` and `InteractiveREPL.dispatch_input()`, automatically passing the XML-encapsulated host facts into provider `stream_chat()` requests.
 5. **Testing**: 4 tests passing across `tests/test_cli_context.py` and `tests/test_repl_context.py`; full test suite (123 tests) passing with zero regressions.
+
