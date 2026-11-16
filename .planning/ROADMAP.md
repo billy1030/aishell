@@ -20,7 +20,7 @@ Terminal AI Shell (`aishell`) bridges natural language intent with safe Linux te
 ## Phase Details
 
 ### Phase 1: Shell Execution Engine & Configuration
-**Goal**: Operators can run shell commands through a managed PTY with synchronized directory navigation, configuration loading, and persistent execution audit logs.
+**Goal:** As an operator, I want to run shell commands through a managed PTY with synchronized directory navigation and configuration loading, so that commands execute cleanly, state persists across commands, and full execution history is audited.
 **Mode:** mvp
 **Depends on**: Nothing (first phase)
 **Requirements**: EXEC-04, EXEC-05, EXEC-06, CONF-01, CONF-02
@@ -29,7 +29,12 @@ Terminal AI Shell (`aishell`) bridges natural language intent with safe Linux te
   2. Directory changes (`cd`) and environment exports (`export`) persist in the parent process across command executions.
   3. Command execution details (exit code, duration, captured output) and session audit logs are persisted in SQLite (`~/.local/state/aishell/history.db`).
   4. Configuration is loaded from `~/.config/aishell/config.toml` with override support via `AISHELL_*` environment variables.
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Project Scaffold, Layered Configuration & Tracer CLI
+- [ ] 01-02-PLAN.md — SQLite Audit Storage & Bounded Session History
+- [ ] 01-03-PLAN.md — Shell Builtin Interceptor, Managed PTY Execution & Signal Routing
 
 ### Phase 2: Interactive REPL & Streaming Terminal UI
 **Goal**: Users can interact through a rich terminal REPL with multiline editing, history search, and live-streamed markdown rendering.
