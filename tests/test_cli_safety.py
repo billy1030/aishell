@@ -68,3 +68,4 @@ def test_cli_oneshot_safety_gate_edited(mock_proposal_provider, monkeypatch):
         assert result.exit_code == 0
         mock_gate.assert_called_once()
         mock_pipeline.assert_called_once_with(edited_cmd)
+

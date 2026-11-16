@@ -19,3 +19,4 @@
 
 ## Verification
 - `uv run pytest tests/test_safety_display.py tests/test_safety_gate.py -v` passed (10/10 tests).
+

@@ -31,3 +31,4 @@
 ## Verification
 - `uv run pytest tests/test_cli_safety.py tests/test_repl_safety.py tests/test_safety_gate.py -v` passed.
 - Full workspace test suite: 153 passed in 15.44s.
+

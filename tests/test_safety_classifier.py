@@ -186,3 +186,4 @@ def test_model_risk_reconciliation():
 
     # Model claims mutating on safe command -> ACCEPT MODEL RISK
     assert classify_risk("ls -la", model_risk="mutating") == RiskLevel.MUTATING
+

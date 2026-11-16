@@ -100,3 +100,4 @@ def test_render_proposal_reconciles_hallucinated_model_risk():
     assert "[HIGH-RISK]" in rendered
     assert "CAUTION: High-risk command" in rendered
     assert panel.border_style == "red"
+

@@ -105,3 +105,4 @@ def render_proposal(
         console.print(panel)
 
     return panel
+
