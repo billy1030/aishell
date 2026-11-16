@@ -5,6 +5,11 @@ from aishell.diagnostics.engine import (
     capture_failure,
     should_diagnose,
 )
+from aishell.diagnostics.remediation import (
+    HALT_NOTICE,
+    MAX_REMEDIATION_CYCLES,
+    RemediationController,
+)
 from aishell.diagnostics.schema import (
     DiagnosticResult,
     FailureCategory,
@@ -19,6 +24,9 @@ __all__ = [
     "DiagnosticResult",
     "FailureCategory",
     "FailurePayload",
+    "HALT_NOTICE",
+    "MAX_REMEDIATION_CYCLES",
+    "RemediationController",
     "capture_failure",
     "categorize_failure",
     "format_failure_observation",
