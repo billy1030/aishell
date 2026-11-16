@@ -15,7 +15,7 @@ Terminal AI Shell (`aishell`) bridges natural language intent with safe Linux te
 - [x] **Phase 3: Multi-Provider LLM Integration** - Pluggable provider architecture for Google Gemini, OpenAI, Anthropic, and Ollama
 - [x] **Phase 4: System Context Inspection & Privacy Guard** - Linux environment discovery, credential scrubbing, and prompt injection defense
 - [x] **Phase 5: Safety Gate & Controlled Command Execution** - Blast-radius risk categorization, confirmation gate, and inline command editing
-- [ ] **Phase 6: Multi-Turn Orchestration, Error Diagnostics & Remediation Loop** - Exit code diagnosis, automated remediation suggestions, and context compaction
+- [x] **Phase 6: Multi-Turn Orchestration, Error Diagnostics & Remediation Loop** - Exit code diagnosis, automated remediation suggestions, and context compaction
 
 ## Phase Details
 
@@ -144,13 +144,13 @@ Plans:
 
 Plans:
 **Wave 1**
-- [ ] 06-01-PLAN.md — Diagnostic Engine & Root-Cause Explanation (DIAG-01, D-01)
+- [x] 06-01-PLAN.md — Diagnostic Engine & Root-Cause Explanation (DIAG-01, D-01)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 06-02-PLAN.md — Bounded Remediation Loop & Safety Gate Integration (DIAG-02, DIAG-03, D-02, D-03)
+- [x] 06-02-PLAN.md — Bounded Remediation Loop & Safety Gate Integration (DIAG-02, DIAG-03, D-02, D-03)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 06-03-PLAN.md — Multi-Turn Conversational Memory & Sliding-Window Compaction (CONF-03, D-04)
+- [x] 06-03-PLAN.md — Multi-Turn Conversational Memory & Sliding-Window Compaction (CONF-03, D-04)
 
 ## Progress
 
@@ -164,4 +164,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. Multi-Provider LLM Integration | 3/3 | Complete | 2026-11-16 |
 | 4. System Context Inspection & Privacy Guard | 3/3 | Complete | 2026-11-16 |
 | 5. Safety Gate & Controlled Command Execution | 3/3 | Complete | 2026-11-16 |
-| 6. Multi-Turn Orchestration, Error Diagnostics & Remediation Loop | 0/3 | Not started | - |
+| 6. Multi-Turn Orchestration, Error Diagnostics & Remediation Loop | 3/3 | Complete | 2026-11-16 |
