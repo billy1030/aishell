@@ -43,3 +43,4 @@
 - **T-06-02 (Tampering / Prompt Injection):** Untrusted command output is wrapped within `<command_failure untrusted="true">` with nested tag neutralization (`&lt;/command_failure&gt;`).
 - **T-06-03 (Denial of Service):** Output size is capped to trailing 50 lines and 4096 bytes.
 - **T-06-SC (Supply Chain):** Implemented using internal packages and existing standard library dependencies without adding external unverified third-party libraries.
+

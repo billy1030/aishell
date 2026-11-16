@@ -42,3 +42,4 @@
 - **T-06-06 (Token Context Overflow):** `ConversationManager` bounds history to 8 messages and 4000 estimated tokens, pruning older turns into summaries to prevent context window saturation.
 - **T-06-07 (Prompt Injection in History):** System prompt and fresh `<system_observation>` host state are injected fresh at the head of every call; history is preserved using typed `ChatMessage` structures.
 - **T-06-SC (Tampering / Supply Chain):** In-memory sliding-window compaction implemented using standard library data structures without third-party session databases.
+

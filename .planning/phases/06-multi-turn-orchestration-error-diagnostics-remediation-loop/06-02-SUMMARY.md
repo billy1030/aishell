@@ -41,3 +41,4 @@
 - **T-06-04 (SafetyGate Remediation Bypass):** Every remediation proposal is routed through `SafetyGate.process_proposal`, enforcing explicit `[y/N/e]` human confirmation before execution.
 - **T-06-05 (Remediation Infinite Loop):** `RemediationController` caps recovery attempts at 2 cycles per incident, halting with an explicit operator notice upon double failure.
 - **T-06-SC (Tampering / Supply Chain):** Pure internal integration between existing PTY runner, SafetyGate, and DiagnosticEngine with zero third-party dependencies.
+
