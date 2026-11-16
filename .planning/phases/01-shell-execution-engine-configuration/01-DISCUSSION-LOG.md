@@ -83,3 +83,4 @@
 
 ### Configuration Lifecycle & First-Run
 - **Auto-resolved via `/gsd auto`:** Sensible default `config.toml` auto-generation on first run, layered configuration hierarchy (CLI > Env > Config File > Defaults), and `0600` file permissions.
+
