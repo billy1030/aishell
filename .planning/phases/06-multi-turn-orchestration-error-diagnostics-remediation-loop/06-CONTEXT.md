@@ -37,3 +37,4 @@ Operators can troubleshoot failures seamlessly through automated root-cause diag
   - Maintains a sliding window of recent conversational turns (default: 8 recent messages).
   - When history exceeds window capacity or token threshold (default: 4000 estimated tokens), older non-system messages are compacted into a single concise `[Conversation Summary: ...]` block.
 - **Rationale**: Keeps LLM context size bounded, prevents token quota exhaustion, and maintains low latency during hours-long terminal sessions.
+

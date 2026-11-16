@@ -26,3 +26,4 @@
 - **Question**: How should long REPL sessions be compacted?
 - **Resolution**: Implement `ConversationManager` using a sliding window with summary compression. The latest host facts and system prompt remain active, while older history is replaced by an aggregated summary turn.
 - **Status**: Locked (D-04).
+

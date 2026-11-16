@@ -140,7 +140,17 @@ Plans:
   2. System proposes a targeted follow-up remediation command with explanation and confirmation prompt.
   3. System strictly caps remediation loops at a maximum of 2 cycles to prevent command thrashing or infinite repair cascades.
   4. System manages sliding-window context compaction to keep long interactive sessions within LLM token limits.
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+**Wave 1**
+- [ ] 06-01-PLAN.md — Diagnostic Engine & Root-Cause Explanation (DIAG-01, D-01)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 06-02-PLAN.md — Bounded Remediation Loop & Safety Gate Integration (DIAG-02, DIAG-03, D-02, D-03)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 06-03-PLAN.md — Multi-Turn Conversational Memory & Sliding-Window Compaction (CONF-03, D-04)
 
 ## Progress
 
