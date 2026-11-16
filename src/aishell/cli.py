@@ -123,6 +123,42 @@ def execute_pipeline(command: str, session_id: Optional[str] = None) -> int:
     return result.exit_code
 
 
+def execute_pipeline_with_remediation(
+    command: str,
+    session_id: Optional[str] = None,
+    provider=None,
+    console: Optional[Console] = None,
+) -> int:
+    """Execute pipeline and trigger bounded remediation loop upon command failure."""
+    exit_code = (
+        execute_pipeline(command)
+        if session_id is None
+        else execute_pipeline(command, session_id)
+    )
+
+    if exit_code != 0 and exit_code != 130 and is_interactive_terminal():
+        from aishell.diagnostics.engine import DiagnosticEngine
+        from aishell.diagnostics.remediation import RemediationController
+        from aishell.safety.gate import SafetyGate
+
+        c = console or Console()
+        diag_engine = DiagnosticEngine(provider=provider)
+        controller = RemediationController()
+        gate = SafetyGate(console=c)
+
+        return controller.run_remediation_loop(
+            failed_command=command,
+            exit_code=exit_code,
+            output="",
+            diagnostic_engine=diag_engine,
+            safety_gate=gate,
+            executor_fn=lambda cmd: execute_pipeline(cmd) if session_id is None else execute_pipeline(cmd, session_id),
+            console=c,
+        )
+
+    return exit_code
+
+
 def execute_one_shot(
     query: Optional[str] = None,
     piped_stdin: Optional[str] = None,
@@ -199,7 +235,11 @@ def execute_one_shot(
             gate = SafetyGate(console=console)
             approved_cmd = gate.process_proposal(proposal, console=console)
             if approved_cmd:
-                execute_pipeline(approved_cmd)
+                execute_pipeline_with_remediation(
+                    command=approved_cmd,
+                    provider=provider,
+                    console=console,
+                )
 
     except ProviderError as err:
         guidance_text = f"\n\n[bold yellow]Guidance:[/bold yellow] {err.guidance}" if err.guidance else ""

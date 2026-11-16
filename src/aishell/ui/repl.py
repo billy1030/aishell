@@ -13,6 +13,9 @@ from rich.console import Console
 from rich.panel import Panel
 
 from aishell.config.settings import AishellSettings, get_settings
+from aishell.conversation.manager import ConversationManager
+from aishell.diagnostics.engine import DiagnosticEngine
+from aishell.diagnostics.remediation import RemediationController
 from aishell.providers.base import BaseProvider
 from aishell.safety.gate import SafetyGate
 from aishell.ui.banner import format_prompt, get_prompt_style, render_banner
@@ -61,6 +64,10 @@ class InteractiveREPL:
                 validate=False,
             )
 
+        self.conversation = ConversationManager()
+        self.diagnostic_engine = DiagnosticEngine(provider=self.provider)
+        self.remediation_controller = RemediationController()
+
         self.last_interrupt_time: float = 0.0
         self.is_streaming: bool = False
         self.kb = self._create_keybindings()
@@ -87,6 +94,50 @@ class InteractiveREPL:
                 input=pt_input,
                 output=DummyOutput(),
             )
+
+    def _trigger_remediation(self, command: str, exit_code: int, output: str) -> int:
+        """Trigger bounded remediation loop on command failure."""
+        self.diagnostic_engine._provider = self.provider
+
+        runner = self.executor_fn
+        if runner is None:
+            from aishell.cli import execute_pipeline
+            runner = lambda c: execute_pipeline(c, session_id=self.session_id)
+
+        return self.remediation_controller.run_remediation_loop(
+            failed_command=command,
+            exit_code=exit_code,
+            output=output,
+            diagnostic_engine=self.diagnostic_engine,
+            safety_gate=self.safety_gate,
+            executor_fn=runner,
+            console=self.console,
+            prompt_session=self.session,
+        )
+
+    def _execute_with_remediation(self, command: str) -> int:
+        """Execute command and trigger remediation loop if it terminates with non-zero exit code."""
+        if self.executor_fn:
+            try:
+                res = self.executor_fn(command)
+            except Exception as exc:
+                self.renderer.render_error(str(exc))
+                res = 1
+        else:
+            from aishell.cli import execute_pipeline
+            res = execute_pipeline(command, session_id=self.session_id)
+
+        exit_code = 0
+        output = ""
+        if isinstance(res, tuple) and len(res) == 2:
+            exit_code, output = res
+        elif isinstance(res, int):
+            exit_code = res
+            output = f"Command exited with code {exit_code}"
+
+        if exit_code != 0 and exit_code != 130:
+            return self._trigger_remediation(command, exit_code, output)
+        return exit_code
 
     def _create_keybindings(self) -> KeyBindings:
         """Configure multiline keybindings per D-02: Enter executes, Alt+Enter / `\\` newline."""
@@ -134,6 +185,7 @@ class InteractiveREPL:
             return True
         elif action in (":clear", "/clear", "clear"):
             self.console.clear()
+            self.conversation.clear()
             return False
         elif action in (":help", "/help", "help"):
             self._print_help()
@@ -144,6 +196,7 @@ class InteractiveREPL:
             if arg:
                 try:
                     self.provider = get_provider(name=arg, settings=self.settings, validate=False)
+                    self.diagnostic_engine._provider = self.provider
                     self.console.print(f"[green]Switched active provider to '{self.provider.name}' (model: {self.provider.model})[/green]")
                 except Exception as exc:
                     self.renderer.render_error(str(exc))
@@ -162,6 +215,7 @@ class InteractiveREPL:
                         settings=self.settings,
                         validate=False,
                     )
+                    self.diagnostic_engine._provider = self.provider
                     self.console.print(f"[green]Switched model to '{self.provider.model}' on provider '{self.provider.name}'[/green]")
                 except Exception as exc:
                     self.renderer.render_error(str(exc))
@@ -214,34 +268,28 @@ class InteractiveREPL:
         cmd_to_run = raw[1:].strip() if is_direct_shell else raw
 
         if is_direct_shell or raw.startswith("cd ") or raw.startswith("export ") or raw.startswith("unset "):
-            if self.executor_fn:
-                try:
-                    self.executor_fn(cmd_to_run)
-                except Exception as exc:
-                    self.renderer.render_error(str(exc))
-            else:
-                from aishell.cli import execute_pipeline
-
-                execute_pipeline(cmd_to_run)
+            self._execute_with_remediation(cmd_to_run)
             return
 
         # Natural language query - Stream tokens from active AI provider
         self.is_streaming = True
+        accumulated_tokens = []
         try:
             import asyncio
             from aishell.context.inspector import inspect_system_context
             from aishell.context.sanitizer import format_system_observation
-            from aishell.providers.base import ChatMessage
             from aishell.providers.errors import ProviderError
             from aishell.providers.prompts import SYSTEM_PROMPT_CHAT
+
+            # Record user query in multi-turn conversation memory per D-04, CONF-03
+            self.conversation.add_user_message(raw)
 
             context_info = inspect_system_context(cwd=os.getcwd())
             observation = format_system_observation(context_info)
             system_instruction = f"{SYSTEM_PROMPT_CHAT}\n\n{observation}"
 
-            messages = [ChatMessage(role="user", content=raw)]
-
-            accumulated_tokens = []
+            # Retrieve active multi-turn conversation history structured for LLM
+            messages = self.conversation.get_messages_for_llm(system_instruction)
 
             def _token_generator():
                 try:
@@ -264,8 +312,12 @@ class InteractiveREPL:
 
             self.renderer.stream_markdown(_token_generator())
 
-            # Safety Gate: check if response proposed a shell command per EXEC-02, D-05
+            # Record assistant response in conversation memory
             full_text = "".join(accumulated_tokens)
+            if full_text.strip():
+                self.conversation.add_assistant_message(full_text)
+
+            # Safety Gate: check if response proposed a shell command per EXEC-02, D-05
             from aishell.providers.schema import extract_proposal_from_text
 
             proposal = extract_proposal_from_text(full_text)
@@ -276,17 +328,14 @@ class InteractiveREPL:
                     prompt_session=self.session,
                 )
                 if approved_cmd:
-                    if self.executor_fn:
-                        try:
-                            self.executor_fn(approved_cmd)
-                        except Exception as exc:
-                            self.renderer.render_error(str(exc))
-                    else:
-                        from aishell.cli import execute_pipeline
-
-                        execute_pipeline(approved_cmd)
+                    self._execute_with_remediation(approved_cmd)
 
         except KeyboardInterrupt:
+            # If tokens were streamed before interruption, save partial response in memory
+            if accumulated_tokens:
+                partial_text = "".join(accumulated_tokens)
+                if partial_text.strip():
+                    self.conversation.add_assistant_message(partial_text)
             # Re-raise so run() handles generation cancellation without session death
             raise
         except ProviderError as err:
