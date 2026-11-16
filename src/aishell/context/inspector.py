@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Optional, Tuple
 import distro
 
+from aishell.context.privacy import PrivacyGuard
 from aishell.context.schema import SystemContext
 
 # Order of package manager priority lookup
@@ -128,6 +129,9 @@ def inspect_system_context(cwd: Optional[str] = None) -> SystemContext:
     # Git state
     git_branch, git_clean = detect_git_status(resolved_cwd)
 
+    # Sanitized environment variables per D-02
+    sanitized_env = PrivacyGuard.sanitize_env_vars(dict(os.environ))
+
     return SystemContext(
         os_name=distro_name,
         os_version=distro_version,
@@ -141,4 +145,5 @@ def inspect_system_context(cwd: Optional[str] = None) -> SystemContext:
         package_manager=pkg_mgr,
         git_branch=git_branch,
         git_clean=git_clean,
+        env_vars=sanitized_env,
     )
