@@ -1,5 +1,6 @@
 """Unit tests for CLI one-shot execution and stdin piping."""
 
+from unittest.mock import MagicMock
 from io import BytesIO, StringIO
 import sys
 import pytest
@@ -8,6 +9,21 @@ from aishell.cli import app, MAX_STDIN_BYTES
 from aishell import __version__
 
 runner = CliRunner()
+
+
+@pytest.fixture(autouse=True)
+def mock_default_provider(monkeypatch):
+    """Mock default AI provider for one-shot tests to avoid live daemon calls."""
+    mock_p = MagicMock()
+    mock_p.name = "mock"
+    mock_p.model = "mock-model"
+
+    async def fake_stream(messages):
+        for msg in messages:
+            yield msg.content
+
+    mock_p.stream_chat = fake_stream
+    monkeypatch.setattr("aishell.providers.factory.get_provider", lambda **kwargs: mock_p)
 
 
 def test_cli_oneshot_command_flag():

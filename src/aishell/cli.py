@@ -123,8 +123,13 @@ def execute_pipeline(command: str, session_id: Optional[str] = None) -> int:
     return result.exit_code
 
 
-def execute_one_shot(query: Optional[str] = None, piped_stdin: Optional[str] = None) -> None:
-    """Execute a one-shot query via RichStreamRenderer per REPL-05, D-08, D-09."""
+def execute_one_shot(
+    query: Optional[str] = None,
+    piped_stdin: Optional[str] = None,
+    provider_name: Optional[str] = None,
+    model_name: Optional[str] = None,
+) -> None:
+    """Execute a one-shot query via RichStreamRenderer and active provider per REPL-05, D-07."""
     parts = []
     if piped_stdin:
         parts.append(piped_stdin.strip())
@@ -136,9 +141,50 @@ def execute_one_shot(query: Optional[str] = None, piped_stdin: Optional[str] = N
         return
 
     renderer = RichStreamRenderer()
-    # Live streaming output render (In Phase 3 this dispatches to LLM provider)
-    tokens = [combined_input]
-    renderer.stream_markdown(tokens)
+    settings = get_settings()
+
+    try:
+        import asyncio
+        from aishell.providers.base import ChatMessage
+        from aishell.providers.errors import ProviderError
+        from aishell.providers.factory import get_provider
+
+        provider = get_provider(
+            name=provider_name,
+            model=model_name,
+            settings=settings,
+            validate=True,
+        )
+
+        messages = [ChatMessage(role="user", content=combined_input)]
+
+        def _token_generator():
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_closed():
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
+            agen = provider.stream_chat(messages)
+            while True:
+                try:
+                    token = loop.run_until_complete(agen.__anext__())
+                    yield token
+                except StopAsyncIteration:
+                    break
+
+        renderer.stream_markdown(_token_generator())
+
+    except ProviderError as err:
+        guidance_text = f"\n\n[bold yellow]Guidance:[/bold yellow] {err.guidance}" if err.guidance else ""
+        renderer.render_error(f"{err.message}{guidance_text}")
+        raise typer.Exit(code=1)
+    except Exception as exc:
+        renderer.render_error(f"Execution error: {exc}")
+        raise typer.Exit(code=1)
 
 
 @app.callback(invoke_without_command=True)
@@ -149,6 +195,18 @@ def main(
         "-c",
         "--command",
         help="Execute a one-shot AI query without entering REPL",
+    ),
+    provider: Optional[str] = typer.Option(
+        None,
+        "-p",
+        "--provider",
+        help="AI provider: ollama, gemini, openai, anthropic",
+    ),
+    model: Optional[str] = typer.Option(
+        None,
+        "-m",
+        "--model",
+        help="AI model name or identifier override",
     ),
     version: Optional[bool] = typer.Option(
         None, "--version", "-v", help="Show aishell version"
@@ -165,10 +223,17 @@ def main(
     ctx.ensure_object(dict)
     piped_stdin = read_piped_stdin()
     ctx.obj["piped_stdin"] = piped_stdin
+    ctx.obj["provider"] = provider
+    ctx.obj["model"] = model
 
     if ctx.invoked_subcommand is None:
         if command or piped_stdin:
-            execute_one_shot(query=command, piped_stdin=piped_stdin)
+            execute_one_shot(
+                query=command,
+                piped_stdin=piped_stdin,
+                provider_name=provider,
+                model_name=model,
+            )
             raise typer.Exit(code=0)
 
         # Check if stdin is a TTY for interactive REPL per REPL-01
@@ -176,7 +241,12 @@ def main(
             from aishell.ui.repl import InteractiveREPL
 
             settings = get_settings()
-            repl = InteractiveREPL(settings=settings, console=console)
+            repl = InteractiveREPL(
+                settings=settings,
+                console=console,
+                provider_name=provider,
+                model_name=model,
+            )
             try:
                 repl.run()
             except (KeyboardInterrupt, EOFError):
@@ -193,10 +263,20 @@ def main(
 def ask_cmd(
     ctx: typer.Context,
     query: str = typer.Argument(..., help="Natural language query for one-shot execution"),
+    provider: Optional[str] = typer.Option(None, "-p", "--provider", help="AI provider"),
+    model: Optional[str] = typer.Option(None, "-m", "--model", help="AI model"),
 ) -> None:
     """Execute a bare positional one-shot query."""
-    piped_stdin = (ctx.obj or {}).get("piped_stdin") if ctx.obj else None
-    execute_one_shot(query=query, piped_stdin=piped_stdin)
+    obj = ctx.obj or {}
+    piped_stdin = obj.get("piped_stdin")
+    active_provider = provider or obj.get("provider")
+    active_model = model or obj.get("model")
+    execute_one_shot(
+        query=query,
+        piped_stdin=piped_stdin,
+        provider_name=active_provider,
+        model_name=active_model,
+    )
 
 
 @app.command(name="exec")
