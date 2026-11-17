@@ -4,7 +4,7 @@
 
 An interactive, system-aware Linux AI console assistant and REPL designed for developers and sysadmins. It bridges natural language intent with Linux terminal operations by generating and explaining shell commands, gathering local system context, and safely running commands with mandatory human confirmation.
 
-![Terminal AI Shell Demo](docs/assets/demo.jpg)
+![Terminal AI Shell Demo](docs/assets/demo-v2.jpg)
 
 ---
 
