@@ -258,6 +258,12 @@ class InteractiveREPL:
             """Exit aishell cleanly on Ctrl+Z."""
             event.app.exit(exception=EOFError())
 
+        @kb.add("escape", "h")
+        def _show_recent_history(event):
+            """Display the last 20 history records on Alt+H."""
+            from prompt_toolkit.application import run_in_terminal
+            run_in_terminal(lambda: self._print_recent_history(20))
+
         return kb
 
     def get_prompt_tokens(self) -> list:
@@ -385,6 +391,12 @@ class InteractiveREPL:
             else:
                 self.console.print("[yellow]No previous conversation found to resume.[/yellow]")
             return False
+        elif action in (":history", "/history", "history"):
+            limit = 20
+            if arg and arg.isdigit():
+                limit = max(1, int(arg))
+            self._print_recent_history(limit)
+            return False
         elif action in (":mcp", "/mcp", "mcp"):
             if arg and arg.lower() == "reload":
                 self.mcp_manager.reload_config()
@@ -395,6 +407,24 @@ class InteractiveREPL:
             self._print_mcp_table()
             return False
         return False
+
+    def _print_recent_history(self, limit: int = 20) -> None:
+        """Render the last `limit` history records in a numbered Rich table."""
+        from rich.table import Table
+
+        entries = self.history.get_strings()
+        recent = entries[-limit:] if entries else []
+        if not recent:
+            self.console.print("[yellow]No command history recorded yet.[/yellow]")
+            return
+
+        table = Table(title=f"Last {len(recent)} History Records", border_style="cyan")
+        table.add_column("#", style="dim cyan", justify="right")
+        table.add_column("Command", style="white")
+        start_idx = len(entries) - len(recent) + 1
+        for idx, cmd in enumerate(recent, start=start_idx):
+            table.add_row(str(idx), cmd)
+        self.console.print(table)
 
     def _discover_mcp_tools_sync(self) -> None:
         """Synchronously discover tools from configured MCP servers."""
@@ -633,7 +663,7 @@ class InteractiveREPL:
             or raw.startswith("/")
             or first_token in (
                 "exit", "quit", "help", "clear", "provider", "model",
-                "context", "skills", "findskills", "mcp", "autorun", "save", "resume",
+                "context", "skills", "findskills", "mcp", "autorun", "save", "resume", "history",
             )
         ):
             if self.handle_meta_command(raw):
