@@ -1,10 +1,12 @@
 """Interactive REPL session using prompt_toolkit and Rich."""
 
 import os
+import re
+import shutil
 import sys
 import time
 import uuid
-from typing import Callable, Iterable, List, Optional
+from typing import Callable, Iterable, List, Optional, Tuple
 from prompt_toolkit import PromptSession
 from prompt_toolkit.filters import has_focus
 from prompt_toolkit.formatted_text import to_formatted_text
@@ -241,6 +243,68 @@ class InteractiveREPL:
         )
         self.console.print(Panel(content, border_style="cyan", expand=False))
 
+    _DIRECT_SHELL_COMMANDS = frozenset({
+        "ls", "ll", "la", "df", "du", "free", "ps", "top", "htop", "btop",
+        "uptime", "whoami", "id", "uname", "pwd", "echo", "cat", "head",
+        "tail", "less", "more", "grep", "egrep", "fgrep", "rg", "awk", "sed",
+        "sort", "uniq", "wc", "cut", "tr", "mkdir", "rmdir", "rm", "cp", "mv",
+        "touch", "ln", "chmod", "chown", "chgrp", "tar", "gzip", "gunzip",
+        "zip", "unzip", "curl", "wget", "ping", "traceroute", "dig",
+        "nslookup", "ip", "ifconfig", "ss", "netstat", "lsof", "lsblk",
+        "fdisk", "mount", "umount", "git", "docker", "docker-compose",
+        "kubectl", "systemctl", "journalctl", "service", "apt", "apt-get",
+        "dpkg", "dnf", "yum", "pacman", "pip", "pip3", "pipx", "uv", "python",
+        "python3", "node", "npm", "npx", "sudo", "su", "vi", "vim", "nano",
+        "which", "whereis", "env", "printenv", "date", "cal", "kill", "pkill",
+        "killall", "clear", "reset", "history", "man", "stat", "file", "tee",
+        "xargs", "jq", "cd", "export", "unset", "alias", "unalias", "source",
+    })
+
+    _WAKE_PREFIX_RE = re.compile(r"^(?:ais|ai)\b[:,\s]*(.*)$", re.IGNORECASE)
+    _CONVERSATIONAL_WAKE_RE = re.compile(r"^(?:hi|hello|hey|please)\b[,:\s]*(.*)$", re.IGNORECASE)
+
+    def _classify_input(self, raw: str) -> Tuple[str, str]:
+        """Classify user input into ('shell', command) or ('ai', query).
+
+        Direct shell commands (e.g. 'ls', 'df -h', '!cmd', 'cd /tmp') run directly
+        without waking the AI. AI is invoked for explicit wake-up prefixes ('hi,',
+        'please', 'ais', '?') or natural language queries.
+        """
+        if raw.startswith("!") or raw.startswith("$"):
+            return ("shell", raw[1:].strip())
+
+        # Explicit AI wake-up triggers
+        ais_match = self._WAKE_PREFIX_RE.match(raw)
+        if ais_match:
+            query = ais_match.group(1).strip() or raw
+            return ("ai", query)
+
+        if self._CONVERSATIONAL_WAKE_RE.match(raw):
+            return ("ai", raw)
+
+        if raw.startswith("?"):
+            query = raw[1:].strip() or raw
+            return ("ai", query)
+
+        # Shell command detection
+        tokens = raw.split()
+        first_token = tokens[0].lower()
+
+        if first_token in ("cd", "export", "unset", "pwd", "echo", "alias", "unalias", "source", "."):
+            return ("shell", raw)
+
+        if not raw.endswith("?"):
+            if first_token in self._DIRECT_SHELL_COMMANDS:
+                return ("shell", raw)
+            if shutil.which(first_token) and (
+                len(tokens) == 1
+                or any(t.startswith(("-", "/", "./", "~/")) for t in tokens[1:])
+                or any(op in raw for op in ("|", ">", "<", "&&", "||", ";"))
+            ):
+                return ("shell", raw)
+
+        return ("ai", raw)
+
     def dispatch_input(self, user_input: str) -> None:
         """Dispatch user input to shell executor or stream renderer."""
         raw = user_input.strip()
@@ -258,15 +322,13 @@ class InteractiveREPL:
                 raise EOFError()
             return
 
-        # Check for direct shell command prefix or common builtins
-        is_direct_shell = raw.startswith("!") or raw.startswith("$")
-        cmd_to_run = raw[1:].strip() if is_direct_shell else raw
-
-        if is_direct_shell or raw.startswith("cd ") or raw.startswith("export ") or raw.startswith("unset "):
-            self._execute_with_remediation(cmd_to_run)
+        mode, payload = self._classify_input(raw)
+        if mode == "shell":
+            self._execute_with_remediation(payload)
             return
 
         # Natural language query - Stream tokens from active AI provider
+        raw = payload
         self.is_streaming = True
         accumulated_tokens = []
         try:

@@ -90,3 +90,43 @@ def test_repl_double_ctrl_c_lifecycle():
     assert (now + 0.5) - repl.last_interrupt_time <= 1.5
     # Ctrl+C after 2.0s does not satisfy exit condition
     assert (now + 2.0) - repl.last_interrupt_time > 1.5
+
+
+def test_repl_direct_shell_vs_ai_wakeup():
+    mock_executor = MagicMock(return_value=0)
+    mock_provider = MagicMock()
+    mock_provider.name = "minimax"
+    mock_provider.model = "MiniMax-M3.1-Flash"
+
+    async def fake_stream(_messages, *args, **kwargs):
+        yield "AI response"
+
+    mock_provider.stream_chat = fake_stream
+
+    test_console = Console(file=MagicMock())
+    repl = InteractiveREPL(
+        console=test_console,
+        executor_fn=mock_executor,
+        provider=mock_provider,
+    )
+
+    # Common shell commands execute directly without waking AI
+    repl.dispatch_input("ls")
+    mock_executor.assert_called_with("ls")
+
+    repl.dispatch_input("df -h")
+    mock_executor.assert_called_with("df -h")
+
+    repl.dispatch_input("ps aux")
+    mock_executor.assert_called_with("ps aux")
+
+    # Wake-up triggers route to AI instead of shell executor
+    mock_executor.reset_mock()
+    repl.dispatch_input("hi, how do I check ports?")
+    mock_executor.assert_not_called()
+
+    repl.dispatch_input("please show memory usage")
+    mock_executor.assert_not_called()
+
+    repl.dispatch_input("ais ls")
+    mock_executor.assert_not_called()
