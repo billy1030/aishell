@@ -14,6 +14,9 @@ default_provider = "minimax"
 # Maximum autonomous agent loop steps per goal
 max_agent_steps = 100
 
+# Optional custom system prompt appended to assistant instructions
+# system_prompt = "Always prefer concise explanations and read-only inspection commands first."
+
 # Model name or identifier
 # Examples:
 #   MiniMax:   "MiniMax-M3.1-Flash" or "MiniMax-Text-01"

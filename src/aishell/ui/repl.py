@@ -475,6 +475,9 @@ class InteractiveREPL:
                 context_info = inspect_system_context(cwd=os.getcwd())
                 observation = format_system_observation(context_info)
                 system_instruction = f"{SYSTEM_PROMPT_CHAT}\n\n{observation}"
+                custom_sys_prompt = getattr(self.settings.general, "system_prompt", None)
+                if custom_sys_prompt and custom_sys_prompt.strip():
+                    system_instruction = f"{system_instruction}\n\n## Custom System Prompt\n{custom_sys_prompt.strip()}"
                 if skills_context:
                     system_instruction = f"{system_instruction}\n\n## Active Skills\n{skills_context}"
 

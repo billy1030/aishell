@@ -48,6 +48,7 @@ class GeneralConfig(BaseModel):
     model: str = Field(default="qwen2.5-coder:7b", description="Model name or endpoint identifier")
     theme: str = Field(default="dark", description="Terminal theme: dark or light")
     max_agent_steps: int = Field(default=100, description="Maximum autonomous agent loop steps per goal")
+    system_prompt: Optional[str] = Field(default=None, description="Custom system prompt appended to assistant instructions")
 
 
 class ExecutionConfig(BaseModel):
