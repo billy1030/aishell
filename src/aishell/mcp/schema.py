@@ -56,3 +56,4 @@ def extract_mcp_call_from_text(text: str) -> Optional[MCPToolCall]:
         except json.JSONDecodeError:
             pass
     return MCPToolCall(server=server, tool=tool, arguments=args)
+
