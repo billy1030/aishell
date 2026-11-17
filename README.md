@@ -17,8 +17,10 @@ An interactive, system-aware Linux AI console assistant and REPL designed for de
   - Automated credential redaction (`PrivacyGuard`) strips API tokens, private keys, and passwords before sending prompts to the AI provider.
   - Untrusted system metadata and command outputs are enclosed in `<context untrusted="true">` blocks.
 - **Self-Healing & Diagnostics:** Non-zero command exit codes trigger root-cause analysis and automated remediation suggestions, strictly capped to a 2-cycle recovery loop (user `Ctrl+C` / SIGINT 130 is ignored).
-- **Conversational Memory:** Multi-turn conversational memory with sliding-window compaction preserves context without token explosion.
-- **Multi-Provider Architecture:** Pluggable adapters supporting Google Gemini, OpenAI, Anthropic Claude, Local Ollama, and OpenAI-compatible endpoints (MiniMax, Groq, DeepSeek, vLLM).
+- **Interactive REPL & Clean Prompt:** Multiline input with vi/emacs bindings, syntax highlighting, history search (`Ctrl+R`), and a clean standard prompt:
+  - `aishell $ ` for regular users
+  - `aishell # ` for root users
+- **Multi-Provider Architecture:** Pluggable adapters supporting MiniMax, Google Gemini, OpenAI, Anthropic Claude, Local Ollama, and any custom OpenAI-compatible endpoint (DeepSeek, Groq, vLLM).
 
 ---
 
@@ -80,10 +82,10 @@ chmod 600 ~/.config/aishell/config.toml
 #### 1. MiniMax (China & Global)
 ```toml
 [general]
-default_provider = "openai"
+default_provider = "minimax"
 model = "MiniMax-M3.1-Flash"
 
-[providers.openai]
+[providers.minimax]
 # For Mainland China (platform.minimaxi.com):
 base_url = "https://api.minimaxi.com/v1"
 # For Global (platform.minimax.io):
@@ -101,7 +103,18 @@ model = "gpt-4o"
 api_key = "sk-proj-your-openai-key-here"
 ```
 
-#### 3. Google Gemini
+#### 3. Any Custom OpenAI-Compatible Provider (DeepSeek, Groq, etc.)
+```toml
+[general]
+default_provider = "deepseek"
+model = "deepseek-chat"
+
+[providers.deepseek]
+base_url = "https://api.deepseek.com/v1"
+api_key = "sk-your-deepseek-key-here"
+```
+
+#### 4. Google Gemini
 ```toml
 [general]
 default_provider = "gemini"
@@ -111,7 +124,7 @@ model = "gemini-2.0-flash"
 api_key = "AIzaSy-your-gemini-key-here"
 ```
 
-#### 4. Anthropic Claude
+#### 5. Anthropic Claude
 ```toml
 [general]
 default_provider = "claude"
@@ -121,7 +134,7 @@ model = "claude-3-5-sonnet-20241022"
 api_key = "sk-ant-your-claude-key-here"
 ```
 
-#### 5. Local & Offline (Ollama)
+#### 6. Local & Offline (Ollama)
 ```toml
 [general]
 default_provider = "ollama"
@@ -141,7 +154,11 @@ Launch the full interactive console:
 aishell
 ```
 
-- Type your natural language query: `find listening ports and what process owns them`
+At the prompt:
+```text
+aishell $ find listening ports and what process owns them
+```
+
 - Review the proposed command, risk category, and explanation.
 - Choose:
   - `y` — Execute immediately.
@@ -152,7 +169,7 @@ aishell
   - `:context` — Inspect system environment, detected OS, and host telemetry.
   - `:history` — View SQLite command audit trail.
   - `:clear` — Reset conversational memory.
-  - `:exit` or `Ctrl+D` — Exit the shell.
+  - `:exit` or `Ctrl+D` — Exit the shell cleanly.
 
 ### 2. One-Shot Query Mode
 Generate, confirm, and execute commands in a single command line call:
@@ -162,8 +179,19 @@ aishell -c "show top 5 memory consuming processes"
 
 You can also specify a provider or model on the fly:
 ```bash
-aishell -c "list all failed systemd units" --provider openai --model MiniMax-M3.1-Flash
+aishell -c "list all failed systemd units" --provider minimax --model MiniMax-M3.1-Flash
 ```
+
+---
+
+## Updating Deployment
+
+To update your existing Ubuntu installation to the latest version on GitHub:
+
+```bash
+pipx install --force git+https://github.com/billy1030/aishell.git
+```
+This updates the binary while preserving your `~/.config/aishell/config.toml` configuration and history log.
 
 ---
 
@@ -187,7 +215,7 @@ uv venv
 source .venv/bin/activate
 uv pip install -e ".[test]"
 
-# Run test suite (181 tests)
+# Run test suite (183 tests)
 uv run pytest
 ```
 
