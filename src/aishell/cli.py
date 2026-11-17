@@ -67,8 +67,8 @@ def read_piped_stdin() -> Optional[str]:
     return None
 
 
-def execute_pipeline(command: str, session_id: Optional[str] = None) -> int:
-    """Core execution pipeline coordinating builtins, PTY runner, and audit logging."""
+def execute_pipeline_capture(command: str, session_id: Optional[str] = None) -> tuple[int, str]:
+    """Core execution pipeline returning (exit_code, output) for diagnostics and AI context."""
     settings = get_settings()
     history = HistoryManager(
         db_path=settings.storage.history_db_path,
@@ -96,7 +96,7 @@ def execute_pipeline(command: str, session_id: Optional[str] = None) -> int:
             output=output,
             executed_by="user",
         )
-        return exit_code
+        return exit_code, output or ""
 
     # Step 2: Dispatch external command to managed PTY runner per D-01, EXEC-04
     result = run_in_pty(
@@ -120,7 +120,13 @@ def execute_pipeline(command: str, session_id: Optional[str] = None) -> int:
         executed_by="user",
     )
 
-    return result.exit_code
+    return result.exit_code, result.output or ""
+
+
+def execute_pipeline(command: str, session_id: Optional[str] = None) -> int:
+    """Core execution pipeline coordinating builtins, PTY runner, and audit logging."""
+    exit_code, _ = execute_pipeline_capture(command=command, session_id=session_id)
+    return exit_code
 
 
 def execute_pipeline_with_remediation(

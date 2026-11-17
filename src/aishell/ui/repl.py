@@ -126,8 +126,8 @@ class InteractiveREPL:
                 self.renderer.render_error(str(exc))
                 res = 1
         else:
-            from aishell.cli import execute_pipeline
-            res = execute_pipeline(command, session_id=self.session_id)
+            from aishell.cli import execute_pipeline_capture
+            res = execute_pipeline_capture(command, session_id=self.session_id)
 
         exit_code = 0
         output = ""
@@ -137,6 +137,7 @@ class InteractiveREPL:
             exit_code = res
             output = f"Command exited with code {exit_code}"
 
+        self._last_execution = (command, exit_code, output)
         if exit_code != 0 and exit_code != 130:
             return self._trigger_remediation(command, exit_code, output)
         return exit_code
@@ -392,6 +393,21 @@ class InteractiveREPL:
                 )
                 if approved_cmd:
                     self._execute_with_remediation(approved_cmd)
+                    last_exec = getattr(self, "_last_execution", None)
+                    if last_exec:
+                        _, exec_code, exec_output = last_exec
+                        from aishell.context.privacy import PrivacyGuard
+                        redacted_out = PrivacyGuard().redact(exec_output or "")
+                        if len(redacted_out) > 4000:
+                            redacted_out = redacted_out[:4000] + "\n...[truncated]..."
+                        self.conversation.add_user_message(
+                            f'<command_output command="{approved_cmd}" exit_code="{exec_code}" untrusted="true">\n'
+                            f"{redacted_out}\n"
+                            "</command_output>"
+                        )
+                        self.console.print(
+                            f"[dim]✓ Command finished (exit {exec_code}). Output saved to AI context — type 'ais continue' or ask a follow-up.[/dim]"
+                        )
 
         except KeyboardInterrupt:
             # If tokens were streamed before interruption, save partial response in memory
