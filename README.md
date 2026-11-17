@@ -251,6 +251,12 @@ uv run pytest
 
 ---
 
+## Disclaimer
+
+This software is provided **for study and educational purposes only**. It is provided "as is", without warranty of any kind, express or implied. The authors and contributors accept **no liability** for any damages, data loss, system changes, or unintended command executions resulting from the use of this tool. Always review AI-proposed commands carefully before approving execution.
+
+---
+
 ## License
 
 MIT License.
