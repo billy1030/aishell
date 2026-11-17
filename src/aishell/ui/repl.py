@@ -605,6 +605,8 @@ class InteractiveREPL:
                     pass
 
                 try:
+                    loop.set_exception_handler(lambda *_: None)
+                    loop.run_until_complete(asyncio.sleep(0))
                     loop.close()
                 except Exception:
                     pass
