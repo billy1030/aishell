@@ -1,6 +1,6 @@
 # Terminal AI Shell (`aishell`)
 
-<a href="https://buymeacoffee.com/billy1030" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="36"></a>
+<a href="https://buymeacoffee.com/billy1030" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50"></a>
 
 An interactive, system-aware Linux AI console assistant and REPL designed for developers and sysadmins. It bridges natural language intent with Linux terminal operations by generating and explaining shell commands, gathering local system context, and safely running commands with mandatory human confirmation.
 
