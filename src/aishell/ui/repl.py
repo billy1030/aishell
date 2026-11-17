@@ -348,9 +348,10 @@ class InteractiveREPL:
             self.is_streaming = False
 
     def _cleanup_async_loop(self) -> None:
-        """Safely shut down any pending async generators to prevent loop destruction warnings."""
+        """Safely shut down provider clients, async generators, and pending tasks."""
         try:
             import asyncio
+            import gc
 
             try:
                 loop = asyncio.get_event_loop()
@@ -358,7 +359,33 @@ class InteractiveREPL:
                 return
 
             if not loop.is_closed():
-                loop.run_until_complete(loop.shutdown_asyncgens())
+                if hasattr(self, "provider") and hasattr(self.provider, "aclose"):
+                    try:
+                        loop.run_until_complete(self.provider.aclose())
+                    except Exception:
+                        pass
+
+                gc.collect()
+                try:
+                    loop.run_until_complete(loop.shutdown_asyncgens())
+                except Exception:
+                    pass
+
+                try:
+                    pending = asyncio.all_tasks(loop)
+                    for task in pending:
+                        task.cancel()
+                    if pending:
+                        loop.run_until_complete(
+                            asyncio.gather(*pending, return_exceptions=True)
+                        )
+                except Exception:
+                    pass
+
+                try:
+                    loop.close()
+                except Exception:
+                    pass
         except Exception:
             pass
 

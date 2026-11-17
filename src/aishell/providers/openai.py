@@ -60,6 +60,12 @@ class OpenAIProvider(BaseProvider):
                 message="OpenAI API key is missing.",
             )
 
+    async def aclose(self) -> None:
+        """Close the underlying AsyncOpenAI HTTP client cleanly."""
+        if self._client is not None:
+            await self._client.close()
+            self._client = None
+
     async def stream_chat(
         self,
         messages: List[ChatMessage],
@@ -80,10 +86,11 @@ class OpenAIProvider(BaseProvider):
                 messages=payload_messages,
                 stream=True,
             )
-            async for chunk in response:
-                delta = chunk.choices[0].delta if chunk.choices else None
-                if delta and delta.content:
-                    yield delta.content
+            async with response:
+                async for chunk in response:
+                    delta = chunk.choices[0].delta if chunk.choices else None
+                    if delta and delta.content:
+                        yield delta.content
 
         except OpenAIAuthError as exc:
             raise AuthenticationError(
