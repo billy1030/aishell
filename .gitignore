@@ -20,3 +20,5 @@ config.toml
 *.db
 history.db
 test_*.py
+
+.planning/
