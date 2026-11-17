@@ -154,5 +154,14 @@ class DiagnosticEngine:
         payload: FailurePayload,
         provider: Optional[BaseProvider] = None,
     ) -> DiagnosticResult:
-        """Synchronous wrapper around diagnose."""
-        return asyncio.run(self.diagnose(payload=payload, provider=provider))
+        """Synchronous wrapper around diagnose, reusing the active event loop if available."""
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_closed():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        return loop.run_until_complete(self.diagnose(payload=payload, provider=provider))
