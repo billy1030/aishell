@@ -206,7 +206,7 @@ class InteractiveREPL:
 
         self._last_execution = (command, exit_code, output)
         first_cmd = command.strip().split()[0].lower() if command.strip() else ""
-        if exit_code != 0 and exit_code != 130 and first_cmd not in self._INTERACTIVE_NO_REMEDIATE:
+        if exit_code not in (0, 127, 130) and first_cmd not in self._INTERACTIVE_NO_REMEDIATE:
             return self._trigger_remediation(command, exit_code, output)
         return exit_code
 
@@ -513,6 +513,13 @@ class InteractiveREPL:
 
         if self._CONVERSATIONAL_WAKE_RE.match(raw):
             return ("ai", raw)
+
+        # Configurable AI trigger keywords from config.toml [general].ai_triggers
+        triggers = getattr(self.settings.general, "ai_triggers", []) or []
+        if triggers:
+            first_word = raw.split(maxsplit=1)[0].rstrip(",:").lower()
+            if first_word in {t.strip().lower() for t in triggers if t.strip()}:
+                return ("ai", raw)
 
         if raw.startswith("?"):
             query = raw[1:].strip() or raw

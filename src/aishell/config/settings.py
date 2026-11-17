@@ -2,7 +2,7 @@
 
 import os
 from pathlib import Path
-from typing import Any, Optional, Tuple, Type
+from typing import Any, List, Optional, Tuple, Type
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic_settings import (
     BaseSettings,
@@ -49,6 +49,10 @@ class GeneralConfig(BaseModel):
     theme: str = Field(default="dark", description="Terminal theme: dark or light")
     max_agent_steps: int = Field(default=100, description="Maximum autonomous agent loop steps per goal")
     system_prompt: Optional[str] = Field(default=None, description="Custom system prompt appended to assistant instructions")
+    ai_triggers: List[str] = Field(
+        default_factory=lambda: ["hi", "hello", "hey", "please", "ais", "ai", "help"],
+        description="Keywords/prefixes that wake the AI assistant in the REPL",
+    )
 
 
 class ExecutionConfig(BaseModel):

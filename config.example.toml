@@ -17,6 +17,9 @@ max_agent_steps = 100
 # Optional custom system prompt appended to assistant instructions
 # system_prompt = "Always prefer concise explanations and read-only inspection commands first."
 
+# Keywords/prefixes that wake the AI assistant (in addition to '?' and '@skill')
+# ai_triggers = ["hi", "hello", "hey", "please", "ais", "ai", "help"]
+
 # Model name or identifier
 # Examples:
 #   MiniMax:   "MiniMax-M3.1-Flash" or "MiniMax-Text-01"
