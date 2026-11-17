@@ -179,7 +179,9 @@ class InteractiveREPL:
             """Insert a newline buffer on Alt+Enter or Ctrl+J."""
             event.current_buffer.insert_text("\n")
 
-        @kb.add("enter")
+        from prompt_toolkit.filters import is_searching
+
+        @kb.add("enter", filter=~is_searching)
         def _handle_enter(event):
             """Submit on Enter unless line ends with trailing backslash."""
             buf = event.current_buffer
