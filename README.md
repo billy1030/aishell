@@ -17,7 +17,7 @@ An interactive, system-aware Linux AI console assistant and REPL designed for de
 - **Model Context Protocol (MCP):**
   - Lightweight `stdio` MCP client reading `~/.config/aishell/mcp.json`. Use `:mcp` / `:mcp reload` to inspect and refresh connected servers and tools.
 - **Bash-Style Tab Autocompletion & Rich UI:**
-  - Press `Tab` to complete file/directory paths, `@skill-name`, `:skills` / `:mcp` / `/context` meta commands, and Linux shell commands.
+  - Press `Tab` to complete file/directory paths, `@skill-name`, `:skills` / `:mcp` / `/context` meta commands, and Linux shell commands (`Escape` closes the completion menu).
   - `AI Assistant` bordered panel with condensed 2-line `<think>` streaming and `Ctrl+Z` / `Ctrl+D` / `:exit` clean exit.
 - **Deterministic Safety Gate:** Commands are evaluated before execution and categorized by blast-radius:
   - `[READ_ONLY]` (Green) — Safe observation commands (`ls`, `ps`, `cat`).
