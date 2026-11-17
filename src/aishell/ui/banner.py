@@ -153,6 +153,7 @@ def render_banner(
     if sys_info.get("commit"):
         version_str += f" [dim]({sys_info['commit']})[/dim]"
     table.add_row("Version:", version_str)
+    table.add_row("Repo:", "[dim]https://github.com/billy1030/aishell[/dim]")
     table.add_row("System:", sys_info["os"])
     table.add_row("Python:", sys_info["python"])
     table.add_row("AI Model:", f"[bold green]{provider}[/bold green] / [bold yellow]{model}[/bold yellow]")
