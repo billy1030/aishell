@@ -39,13 +39,18 @@ src/aishell/
 │   ├── classifier.py       # Deterministic AST/regex blast-radius risk classifier
 │   ├── display.py          # Color-coded Proposal Card renderer
 │   └── gate.py             # SafetyGate human confirmation ([y=run / N=cancel / e=edit])
+├── skills/
+│   ├── __init__.py         # Public exports for Skill and SkillManager
+│   ├── builtins.py         # Built-in Linux/DevOps skills (repo-study, web-search, web-fetch, etc.)
+│   ├── manager.py          # Hierarchical SKILL.md discovery (project > user > builtin) & matching
+│   └── schema.py           # Pydantic Skill model (name, description, instructions, triggers)
 ├── storage/
 │   └── history.py          # ACID SQLite command audit log (~/.local/state/aishell/history.db)
 └── ui/
-    ├── banner.py           # Startup system banner & clean UNIX prompt ('aishell $ ' / 'aishell # ')
+    ├── banner.py           # Startup system banner (with version & commit ID) & clean UNIX prompt
     ├── history.py          # PromptToolkit SQLite-backed reverse search history (Ctrl+R)
     ├── renderer.py         # Rich Live Markdown streamer with 'Thinking...' spinner
-    └── repl.py             # InteractiveREPL event loop, input router, & async cleanup
+    └── repl.py             # InteractiveREPL event loop, autonomous agentic loop, & async cleanup
 ```
 
 ---
