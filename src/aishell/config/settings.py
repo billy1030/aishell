@@ -3,7 +3,7 @@
 import os
 from pathlib import Path
 from typing import Any, Optional, Tuple, Type
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -79,7 +79,7 @@ class ProviderConfig(BaseModel):
 class ProvidersConfig(BaseModel):
     """AI providers collection, supporting standard and arbitrary custom providers."""
 
-    model_config = SettingsConfigDict(extra="allow")
+    model_config = ConfigDict(extra="allow")
 
     gemini: ProviderConfig = Field(default_factory=ProviderConfig)
     openai: ProviderConfig = Field(default_factory=ProviderConfig)

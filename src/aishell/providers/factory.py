@@ -53,20 +53,6 @@ def get_provider(
     conf = settings or get_settings()
     provider_name = (name or conf.general.default_provider).strip().lower()
 
-    if provider_name not in _PROVIDER_REGISTRY:
-        custom_cfg = conf.providers.get_provider_config(provider_name)
-        has_custom = bool(
-            custom_cfg.base_url
-            or custom_cfg.api_key
-            or os.environ.get(f"{provider_name.upper()}_API_KEY")
-        )
-        if not has_custom:
-            supported = ", ".join(get_supported_providers())
-            raise ProviderError(
-                message=f"Unsupported provider '{provider_name}'. Supported providers: {supported}.",
-                guidance=f"Choose one of the supported providers: {supported} via -p/--provider, or configure [providers.{provider_name}] in config.toml.",
-            )
-
     # Determine model: explicit arg > settings.general.model (if matching provider) > provider default
     target_model = model
     if not target_model:
@@ -124,18 +110,26 @@ def get_provider(
             base_url=anthropic_cfg.base_url,
         )
     else:
-        # Any arbitrary custom provider (compatible with OpenAI format)
+        # Universal OpenAI-compatible provider resolution based on config or env
         custom_cfg = conf.providers.get_provider_config(provider_name)
+        env_prefix = provider_name.upper().replace("-", "_")
         api_key = (
             custom_cfg.api_key
-            or os.environ.get(f"{provider_name.upper()}_API_KEY")
+            or os.environ.get(f"{env_prefix}_API_KEY")
+            or conf.providers.openai.api_key
             or os.environ.get("OPENAI_API_KEY")
+        )
+        base_url = (
+            custom_cfg.base_url
+            or os.environ.get(f"{env_prefix}_BASE_URL")
+            or conf.providers.openai.base_url
+            or os.environ.get("OPENAI_BASE_URL")
         )
         provider = OpenAIProvider(
             name=provider_name,
             model=target_model,
             api_key=api_key,
-            base_url=custom_cfg.base_url,
+            base_url=base_url,
         )
 
     if validate:

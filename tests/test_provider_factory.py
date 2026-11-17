@@ -57,11 +57,46 @@ def test_get_provider_model_override():
     assert provider.model == "deepseek-coder:6.7b"
 
 
-def test_get_provider_unsupported_fails():
-    with pytest.raises(ProviderError) as exc_info:
-        get_provider("unsupported_ai_vendor")
-    assert "unsupported_ai_vendor" in str(exc_info.value)
-    assert "Supported providers" in str(exc_info.value)
+def test_get_provider_universal_without_key_raises_auth_error(monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    settings = AishellSettings()
+    settings.providers.openai.api_key = None
+
+    with pytest.raises(AuthenticationError) as exc_info:
+        get_provider("volcengine", settings=settings, validate=True)
+    assert "Volcengine" in str(exc_info.value)
+
+    # With validate=False (as used during REPL startup), any provider instantiates cleanly
+    provider = get_provider("volcengine", model="doubao-pro", settings=settings, validate=False)
+    assert isinstance(provider, OpenAIProvider)
+    assert provider.name == "volcengine"
+    assert provider.model == "doubao-pro"
+
+
+def test_get_provider_universal_from_toml(tmp_path, monkeypatch):
+    from aishell.config.settings import load_settings
+
+    cfg = tmp_path / "config.toml"
+    cfg.write_text(
+        """
+[general]
+default_provider = "volcengine"
+model = "doubao-pro-32k"
+
+[providers.volcengine]
+base_url = "https://ark.cn-beijing.volces.com/api/v3"
+api_key = "volc-secret-123"
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("AISHELL_CONFIG_FILE", str(cfg))
+    settings = load_settings(cfg)
+    provider = get_provider(settings=settings, validate=True)
+    assert isinstance(provider, OpenAIProvider)
+    assert provider.name == "volcengine"
+    assert provider.model == "doubao-pro-32k"
+    assert provider.base_url == "https://ark.cn-beijing.volces.com/api/v3"
+    assert provider.api_key == "volc-secret-123"
 
 
 def test_get_provider_validation_checks_credentials():

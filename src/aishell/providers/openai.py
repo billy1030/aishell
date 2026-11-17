@@ -53,11 +53,11 @@ class OpenAIProvider(BaseProvider):
         return self._get_client()
 
     def validate_credentials(self) -> None:
-        """Validate OpenAI API key is present."""
+        """Validate API key is present."""
         if not self.api_key or not self.api_key.strip():
             raise AuthenticationError(
-                provider="openai",
-                message="OpenAI API key is missing.",
+                provider=self.name,
+                message=f"{self.name.capitalize()} API key is missing.",
             )
 
     async def aclose(self) -> None:
