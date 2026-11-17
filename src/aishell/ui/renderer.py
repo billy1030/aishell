@@ -12,6 +12,7 @@ from typing import Any, Dict, Generator, Iterable, Optional
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
+from rich.panel import Panel
 from rich.spinner import Spinner
 from rich.status import Status
 from rich.text import Text
@@ -148,7 +149,14 @@ class RichStreamRenderer:
                     accumulated_text += token
                     display_text = _condense_thinking(accumulated_text)
                     if display_text:
-                        live.update(Markdown(display_text, code_theme=code_theme))
+                        live.update(
+                            Panel(
+                                Markdown(display_text, code_theme=code_theme),
+                                title="[bold cyan]AI Assistant[/bold cyan]",
+                                border_style="cyan",
+                                padding=(0, 1),
+                            )
+                        )
             finally:
                 if not accumulated_text:
                     live.update(Text(""))
