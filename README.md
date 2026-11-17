@@ -156,13 +156,20 @@ aishell
 
 At the prompt:
 ```text
-aishell $ find listening ports and what process owns them
+# Standard Linux commands run directly without waking AI:
+aishell $ ls -la
+aishell $ df -h
+
+# Wake up AI using 'ais', 'please', 'hi,', '?' or natural language questions:
+aishell $ ais find listening ports and what process owns them
+aishell $ please check why nginx failed
 ```
 
+- While waiting for the AI response, an animated `Thinking...` indicator is shown.
 - Review the proposed command, risk category, and explanation.
-- Choose:
-  - `y` — Execute immediately.
-  - `N` — Cancel.
+- At **`Execute command? [y=run / N=cancel / e=edit]:`**, choose:
+  - `y` — Execute immediately (output is captured into AI context for follow-ups).
+  - `N` (or `Enter`) — Cancel safely.
   - `e` — Edit command inline before running.
 - **Built-in Slash Commands:**
   - `:help` — Show available commands.
@@ -193,6 +200,23 @@ pipx install --force git+https://github.com/billy1030/aishell.git
 ```
 This updates the binary while preserving your `~/.config/aishell/config.toml` configuration and history log.
 
+### Running as `root` (`su` / `sudo`)
+
+If you installed `aishell` via `pipx` under a non-root user and want to run it after `su` or `sudo -i`:
+
+```bash
+sudo ln -sf "$HOME/.local/bin/aishell" /usr/local/bin/aishell
+sudo mkdir -p /root/.config/aishell
+sudo cp "$HOME/.config/aishell/config.toml" /root/.config/aishell/config.toml
+sudo chmod 600 /root/.config/aishell/config.toml
+```
+
+---
+
+## Documentation & Architecture
+
+For full module architecture, input routing rules, security layers, and async lifecycle details, see [Technical Documentation](docs/TECH_DOCS.md).
+
 ---
 
 ## Audit Logs & Privacy
@@ -215,7 +239,7 @@ uv venv
 source .venv/bin/activate
 uv pip install -e ".[test]"
 
-# Run test suite (183 tests)
+# Run test suite (184 tests)
 uv run pytest
 ```
 
