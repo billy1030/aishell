@@ -40,7 +40,7 @@ class MCPStdioClient:
             {
                 "protocolVersion": "2024-11-05",
                 "capabilities": {},
-                "clientInfo": {"name": "aishell", "version": "0.1.1"},
+                "clientInfo": {"name": "aishell", "version": "0.1.2"},
             },
         )
         await self._notify("notifications/initialized", {})
@@ -206,3 +206,4 @@ class MCPManager:
             lines.append(f'  <tool server="{t.server}" name="{t.name}">{desc}</tool>')
         lines.append("</mcp_tools>")
         return "\n".join(lines)
+

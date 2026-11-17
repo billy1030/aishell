@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aishell"
-version = "0.1.1"
+version = "0.1.2"
 description = "Terminal AI Shell - Interactive, system-aware Linux AI console assistant and REPL"
 readme = "README.md"
 requires-python = ">=3.11"
