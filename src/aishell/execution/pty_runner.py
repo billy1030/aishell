@@ -21,6 +21,7 @@ IS_POSIX = os.name != "nt" and sys.platform != "win32"
 try:
     import pty
     import termios
+    import tty
     import fcntl
     import struct
     import select
@@ -123,9 +124,18 @@ def _run_posix_pty(
         if hasattr(signal, "SIGWINCH"):
             old_sigwinch = signal.signal(signal.SIGWINCH, handle_sigwinch)
 
-        # Polling loop for output streaming with timeout
+        # Put stdin into raw mode for interactive bidirectional PTY forwarding (bash, vim, sudo, top)
+        forward_stdin = bool(is_interactive_terminal and echo_to_terminal and stdin_fd is not None)
+        if forward_stdin:
+            try:
+                tty.setraw(stdin_fd)
+            except (termios.error, OSError):
+                forward_stdin = False
+
+        # Polling loop for bidirectional PTY I/O streaming with timeout
         timed_out = False
         deadline = start_time + timeout
+        watch_fds = [master_fd, stdin_fd] if forward_stdin else [master_fd]
 
         while True:
             remaining_time = deadline - time.perf_counter()
@@ -137,8 +147,17 @@ def _run_posix_pty(
                     pass
                 break
 
-            # Wait for master_fd to have readable data or child to exit
-            r, _, _ = select.select([master_fd], [], [], min(0.1, remaining_time))
+            # Wait for master_fd output or stdin_fd user input
+            r, _, _ = select.select(watch_fds, [], [], min(0.1, remaining_time))
+            if forward_stdin and stdin_fd in r:
+                try:
+                    user_data = os.read(stdin_fd, 1024)
+                    if user_data:
+                        os.write(master_fd, user_data)
+                except OSError:
+                    forward_stdin = False
+                    watch_fds = [master_fd]
+
             if master_fd in r:
                 try:
                     data = os.read(master_fd, 4096)

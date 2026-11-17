@@ -120,6 +120,18 @@ def test_repl_direct_shell_vs_ai_wakeup():
     repl.dispatch_input("ps aux")
     mock_executor.assert_called_with("ps aux")
 
+    repl.dispatch_input("bash")
+    mock_executor.assert_called_with("bash")
+
+    repl.dispatch_input("./deploy.sh")
+    mock_executor.assert_called_with("./deploy.sh")
+
+    repl.dispatch_input("FOO=bar env")
+    mock_executor.assert_called_with("FOO=bar env")
+
+    repl.dispatch_input("for i in 1 2; do echo $i; done")
+    mock_executor.assert_called_with("for i in 1 2; do echo $i; done")
+
     # Wake-up triggers route to AI instead of shell executor
     mock_executor.reset_mock()
     repl.dispatch_input("hi, how do I check ports?")

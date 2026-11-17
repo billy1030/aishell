@@ -8,6 +8,7 @@ import time
 import uuid
 from typing import Callable, Iterable, List, Optional, Tuple
 from prompt_toolkit import PromptSession
+from prompt_toolkit.completion import PathCompleter, WordCompleter, merge_completers
 from prompt_toolkit.filters import has_focus
 from prompt_toolkit.formatted_text import to_formatted_text
 from prompt_toolkit.key_binding import KeyBindings
@@ -73,11 +74,23 @@ class InteractiveREPL:
         self.last_interrupt_time: float = 0.0
         self.is_streaming: bool = False
         self.kb = self._create_keybindings()
+        self.completer = merge_completers([
+            WordCompleter(
+                sorted(self._DIRECT_SHELL_COMMANDS | {
+                    ":help", ":context", ":history", ":clear", ":exit",
+                    "/provider", "/model", "ais", "please", "hi,",
+                }),
+                ignore_case=False,
+            ),
+            PathCompleter(expanduser=True),
+        ])
 
         try:
             self.session: PromptSession = PromptSession(
                 history=self.history,
                 key_bindings=self.kb,
+                completer=self.completer,
+                complete_while_typing=False,
                 style=get_prompt_style(),
                 multiline=True,
                 enable_history_search=True,
@@ -90,6 +103,8 @@ class InteractiveREPL:
             self.session = PromptSession(
                 history=self.history,
                 key_bindings=self.kb,
+                completer=self.completer,
+                complete_while_typing=False,
                 style=get_prompt_style(),
                 multiline=True,
                 enable_history_search=True,
@@ -245,6 +260,7 @@ class InteractiveREPL:
         self.console.print(Panel(content, border_style="cyan", expand=False))
 
     _DIRECT_SHELL_COMMANDS = frozenset({
+        "bash", "sh", "zsh", "fish", "ssh", "scp", "rsync", "tmux", "screen",
         "ls", "ll", "la", "df", "du", "free", "ps", "top", "htop", "btop",
         "uptime", "whoami", "id", "uname", "pwd", "echo", "cat", "head",
         "tail", "less", "more", "grep", "egrep", "fgrep", "rg", "awk", "sed",
@@ -263,11 +279,12 @@ class InteractiveREPL:
 
     _WAKE_PREFIX_RE = re.compile(r"^(?:ais|ai)\b[:,\s]*(.*)$", re.IGNORECASE)
     _CONVERSATIONAL_WAKE_RE = re.compile(r"^(?:hi|hello|hey|please)\b[,:\s]*(.*)$", re.IGNORECASE)
+    _ENV_ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 
     def _classify_input(self, raw: str) -> Tuple[str, str]:
         """Classify user input into ('shell', command) or ('ai', query).
 
-        Direct shell commands (e.g. 'ls', 'df -h', '!cmd', 'cd /tmp') run directly
+        Direct shell commands (e.g. 'ls', 'df -h', 'bash', './run.sh', '!cmd') run directly
         without waking the AI. AI is invoked for explicit wake-up prefixes ('hi,',
         'please', 'ais', '?') or natural language queries.
         """
@@ -287,7 +304,7 @@ class InteractiveREPL:
             query = raw[1:].strip() or raw
             return ("ai", query)
 
-        # Shell command detection
+        # Shell command, script path, variable assignment, and bash syntax detection
         tokens = raw.split()
         first_token = tokens[0].lower()
 
@@ -295,12 +312,18 @@ class InteractiveREPL:
             return ("shell", raw)
 
         if not raw.endswith("?"):
-            if first_token in self._DIRECT_SHELL_COMMANDS:
+            if (
+                first_token in self._DIRECT_SHELL_COMMANDS
+                or first_token.startswith(("./", "/", "~/"))
+                or self._ENV_ASSIGN_RE.match(tokens[0])
+                or first_token in ("for", "while", "until", "if", "case", "function", "[[")
+                or any(op in raw for op in ("|", ">", "<", "&&", "||", ";", "$(", "`"))
+            ):
                 return ("shell", raw)
+
             if shutil.which(first_token) and (
                 len(tokens) == 1
                 or any(t.startswith(("-", "/", "./", "~/")) for t in tokens[1:])
-                or any(op in raw for op in ("|", ">", "<", "&&", "||", ";"))
             ):
                 return ("shell", raw)
 
