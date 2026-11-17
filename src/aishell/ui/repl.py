@@ -164,12 +164,8 @@ class InteractiveREPL:
         return kb
 
     def get_prompt_tokens(self) -> list:
-        """Return dynamic prompt tokens reflecting current working directory and model."""
-        model_display = f"{self.provider.name}:{self.provider.model}" if hasattr(self, "provider") and self.provider else self.settings.general.model
-        return format_prompt(
-            cwd=os.getcwd(),
-            model_name=model_display,
-        )
+        """Return clean prompt tokens: 'aishell $ ' or 'aishell # '."""
+        return format_prompt()
 
     def handle_meta_command(self, cmd: str) -> bool:
         """Handle internal meta commands (:exit, :quit, /clear, /help, /provider, /model).
@@ -181,7 +177,6 @@ class InteractiveREPL:
         arg = parts[1].strip() if len(parts) > 1 else None
 
         if action in (":exit", ":quit", "/exit", "/quit", "exit", "quit"):
-            self.console.print("[dim]Goodbye![/dim]")
             return True
         elif action in (":clear", "/clear", "clear"):
             self.console.clear()
@@ -302,13 +297,19 @@ class InteractiveREPL:
                     asyncio.set_event_loop(loop)
 
                 agen = self.provider.stream_chat(messages, system_prompt=system_instruction)
-                while True:
+                try:
+                    while True:
+                        try:
+                            token = loop.run_until_complete(agen.__anext__())
+                            accumulated_tokens.append(token)
+                            yield token
+                        except StopAsyncIteration:
+                            break
+                finally:
                     try:
-                        token = loop.run_until_complete(agen.__anext__())
-                        accumulated_tokens.append(token)
-                        yield token
-                    except StopAsyncIteration:
-                        break
+                        loop.run_until_complete(agen.aclose())
+                    except Exception:
+                        pass
 
             self.renderer.stream_markdown(_token_generator())
 
@@ -346,37 +347,55 @@ class InteractiveREPL:
         finally:
             self.is_streaming = False
 
+    def _cleanup_async_loop(self) -> None:
+        """Safely shut down any pending async generators to prevent loop destruction warnings."""
+        try:
+            import asyncio
+
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                return
+
+            if not loop.is_closed():
+                loop.run_until_complete(loop.shutdown_asyncgens())
+        except Exception:
+            pass
+
     def run(self) -> None:
         """Run interactive REPL event loop."""
         render_banner(self.console, self.settings)
 
-        while True:
-            try:
-                prompt_tokens = self.get_prompt_tokens()
-                user_input = self.session.prompt(prompt_tokens)
-                self.dispatch_input(user_input)
-                # Reset consecutive interrupt timer after successful input
-                self.last_interrupt_time = 0.0
+        try:
+            while True:
+                try:
+                    prompt_tokens = self.get_prompt_tokens()
+                    user_input = self.session.prompt(prompt_tokens)
+                    self.dispatch_input(user_input)
+                    # Reset consecutive interrupt timer after successful input
+                    self.last_interrupt_time = 0.0
 
-            except KeyboardInterrupt:
-                if self.is_streaming:
-                    # Cancel streaming token generation immediately without killing session per REPL-04
-                    self.is_streaming = False
-                    self.console.print("\n[dim yellow]^C (generation cancelled)[/dim yellow]")
-                    continue
+                except KeyboardInterrupt:
+                    if self.is_streaming:
+                        # Cancel streaming token generation immediately without killing session per REPL-04
+                        self.is_streaming = False
+                        self.console.print("\n[dim yellow]^C (generation cancelled)[/dim yellow]")
+                        continue
 
-                # Empty prompt buffer interrupt handling per D-03
-                now = time.time()
-                if now - self.last_interrupt_time <= 1.5:
-                    self.console.print("\n[dim]Exiting aishell...[/dim]")
+                    # Empty prompt buffer interrupt handling per D-03
+                    now = time.time()
+                    if now - self.last_interrupt_time <= 1.5:
+                        self.console.print("\n[dim cyan]Goodbye![/dim cyan]")
+                        break
+                    else:
+                        self.last_interrupt_time = now
+                        self.console.print("\n[dim](Press Ctrl+C again or type :exit to quit)[/dim]")
+                        continue
+
+                except EOFError:
+                    self.console.print("[dim cyan]Goodbye![/dim cyan]")
                     break
-                else:
-                    self.last_interrupt_time = now
-                    self.console.print("\n[dim](Press Ctrl+C again or Ctrl+D to exit)[/dim]")
-                    continue
-
-            except EOFError:
-                self.console.print("\n[dim]Exiting aishell...[/dim]")
-                break
-            except Exception as exc:
-                self.renderer.render_error(f"Unexpected error: {exc}")
+                except Exception as exc:
+                    self.renderer.render_error(f"Unexpected error: {exc}")
+        finally:
+            self._cleanup_async_loop()

@@ -1,5 +1,6 @@
 """Factory for resolving, instantiating, and validating AI provider adapters."""
 
+import os
 from typing import Dict, Optional, Type
 from aishell.config.settings import AishellSettings, get_settings
 from aishell.providers.anthropic import AnthropicProvider
@@ -14,6 +15,7 @@ _PROVIDER_REGISTRY: Dict[str, Type[BaseProvider]] = {
     "gemini": GeminiProvider,
     "openai": OpenAIProvider,
     "anthropic": AnthropicProvider,
+    "minimax": OpenAIProvider,
 }
 
 _DEFAULT_MODELS: Dict[str, str] = {
@@ -21,6 +23,7 @@ _DEFAULT_MODELS: Dict[str, str] = {
     "gemini": "gemini-2.0-flash",
     "openai": "gpt-4o",
     "anthropic": "claude-3-5-sonnet-20241022",
+    "minimax": "MiniMax-M3.1-Flash",
 }
 
 
@@ -38,7 +41,7 @@ def get_provider(
     """Instantiate and configure an AI provider adapter per D-04, PROV-01.
 
     Args:
-        name: Name of provider ("ollama", "gemini", "openai", "anthropic").
+        name: Name of provider ("minimax", "ollama", "gemini", "openai", "anthropic", or custom).
               Defaults to settings.general.default_provider.
         model: Model name/identifier override.
         settings: AishellSettings instance.
@@ -46,21 +49,23 @@ def get_provider(
 
     Returns:
         Configured BaseProvider instance.
-
-    Raises:
-        ProviderError: If requested provider name is unsupported.
-        AuthenticationError: If credentials for cloud provider are missing and validate=True.
-        ConnectionError: If endpoint connection settings are invalid.
     """
     conf = settings or get_settings()
     provider_name = (name or conf.general.default_provider).strip().lower()
 
     if provider_name not in _PROVIDER_REGISTRY:
-        supported = ", ".join(get_supported_providers())
-        raise ProviderError(
-            message=f"Unsupported provider '{provider_name}'. Supported providers: {supported}.",
-            guidance=f"Choose one of the supported providers: {supported} via -p/--provider or in config.toml.",
+        custom_cfg = conf.providers.get_provider_config(provider_name)
+        has_custom = bool(
+            custom_cfg.base_url
+            or custom_cfg.api_key
+            or os.environ.get(f"{provider_name.upper()}_API_KEY")
         )
+        if not has_custom:
+            supported = ", ".join(get_supported_providers())
+            raise ProviderError(
+                message=f"Unsupported provider '{provider_name}'. Supported providers: {supported}.",
+                guidance=f"Choose one of the supported providers: {supported} via -p/--provider, or configure [providers.{provider_name}] in config.toml.",
+            )
 
     # Determine model: explicit arg > settings.general.model (if matching provider) > provider default
     target_model = model
@@ -87,9 +92,29 @@ def get_provider(
     elif provider_name == "openai":
         openai_cfg = conf.providers.openai
         provider = OpenAIProvider(
+            name="openai",
             model=target_model,
             api_key=openai_cfg.api_key,
             base_url=openai_cfg.base_url,
+        )
+    elif provider_name == "minimax":
+        minimax_cfg = conf.providers.get_provider_config("minimax")
+        api_key = (
+            minimax_cfg.api_key
+            or conf.providers.openai.api_key
+            or os.environ.get("MINIMAX_API_KEY")
+            or os.environ.get("OPENAI_API_KEY")
+        )
+        base_url = (
+            minimax_cfg.base_url
+            or conf.providers.openai.base_url
+            or "https://api.minimaxi.com/v1"
+        )
+        provider = OpenAIProvider(
+            name="minimax",
+            model=target_model,
+            api_key=api_key,
+            base_url=base_url,
         )
     elif provider_name == "anthropic":
         anthropic_cfg = conf.providers.anthropic
@@ -97,6 +122,20 @@ def get_provider(
             model=target_model,
             api_key=anthropic_cfg.api_key,
             base_url=anthropic_cfg.base_url,
+        )
+    else:
+        # Any arbitrary custom provider (compatible with OpenAI format)
+        custom_cfg = conf.providers.get_provider_config(provider_name)
+        api_key = (
+            custom_cfg.api_key
+            or os.environ.get(f"{provider_name.upper()}_API_KEY")
+            or os.environ.get("OPENAI_API_KEY")
+        )
+        provider = OpenAIProvider(
+            name=provider_name,
+            model=target_model,
+            api_key=api_key,
+            base_url=custom_cfg.base_url,
         )
 
     if validate:

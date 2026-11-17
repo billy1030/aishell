@@ -26,24 +26,24 @@ def test_contract_path(tmp_path: Path):
 
 
 def test_format_prompt_string():
-    prompt_str = format_prompt_string(cwd="/var/log", model_name="qwen-coder")
-    assert prompt_str.startswith("aishell [")
-    assert "(qwen-coder)" in prompt_str
-    assert prompt_str.endswith("> ")
+    prompt_user = format_prompt_string(is_root=False)
+    assert prompt_user == "aishell $ "
+
+    prompt_root = format_prompt_string(is_root=True)
+    assert prompt_root == "aishell # "
 
 
 def test_format_prompt_tokens():
-    tokens = format_prompt(cwd="/tmp", model_name="gemini-2.0")
+    tokens = format_prompt(is_root=False)
     text = "".join(tok[1] for tok in tokens)
-    assert text.startswith("aishell [")
-    assert "(gemini-2.0)" in text
-    assert text.endswith("> ")
+    assert text == "aishell $ "
+
+    tokens_root = format_prompt(is_root=True)
+    text_root = "".join(tok[1] for tok in tokens_root)
+    assert text_root == "aishell # "
 
     # Check token classes
-    token_dict = dict(tokens)
     assert "class:prompt.brand" in [tok[0] for tok in tokens]
-    assert "class:prompt.path" in [tok[0] for tok in tokens]
-    assert "class:prompt.model" in [tok[0] for tok in tokens]
     assert "class:prompt.symbol" in [tok[0] for tok in tokens]
 
 

@@ -77,7 +77,9 @@ class ProviderConfig(BaseModel):
 
 
 class ProvidersConfig(BaseModel):
-    """AI providers collection."""
+    """AI providers collection, supporting standard and arbitrary custom providers."""
+
+    model_config = SettingsConfigDict(extra="allow")
 
     gemini: ProviderConfig = Field(default_factory=ProviderConfig)
     openai: ProviderConfig = Field(default_factory=ProviderConfig)
@@ -85,6 +87,26 @@ class ProvidersConfig(BaseModel):
     ollama: ProviderConfig = Field(
         default_factory=lambda: ProviderConfig(base_url="http://localhost:11434/v1")
     )
+    minimax: ProviderConfig = Field(
+        default_factory=lambda: ProviderConfig(base_url="https://api.minimaxi.com/v1")
+    )
+
+    def get_provider_config(self, name: str) -> ProviderConfig:
+        """Get provider config by name, returning custom extra config or default."""
+        name_lower = name.lower()
+        if hasattr(self, name_lower):
+            val = getattr(self, name_lower)
+            if isinstance(val, ProviderConfig):
+                return val
+        # Check extra attributes (e.g. [providers.deepseek] or [providers.custom] in TOML)
+        extra = getattr(self, "__pydantic_extra__", {}) or {}
+        if name_lower in extra:
+            raw = extra[name_lower]
+            if isinstance(raw, dict):
+                return ProviderConfig(**raw)
+            if isinstance(raw, ProviderConfig):
+                return raw
+        return ProviderConfig()
 
 
 class AishellSettings(BaseSettings):
@@ -119,6 +141,8 @@ class AishellSettings(BaseSettings):
             self.providers.openai.api_key = os.environ.get("OPENAI_API_KEY")
         if not self.providers.anthropic.api_key:
             self.providers.anthropic.api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if not self.providers.minimax.api_key:
+            self.providers.minimax.api_key = os.environ.get("MINIMAX_API_KEY")
 
     @classmethod
     def settings_customise_sources(

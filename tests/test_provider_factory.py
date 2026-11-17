@@ -16,6 +16,30 @@ def test_get_supported_providers():
     assert "gemini" in supported
     assert "openai" in supported
     assert "anthropic" in supported
+    assert "minimax" in supported
+
+
+def test_get_provider_minimax_instantiation():
+    settings = AishellSettings()
+    settings.providers.minimax.api_key = "test-minimax-key"
+    provider = get_provider("minimax", settings=settings, validate=True)
+    assert isinstance(provider, OpenAIProvider)
+    assert provider.name == "minimax"
+    assert provider.model == "MiniMax-M3.1-Flash"
+    assert provider.base_url == "https://api.minimaxi.com/v1"
+    assert provider.api_key == "test-minimax-key"
+
+
+def test_get_provider_custom_configured_provider():
+    settings = AishellSettings()
+    # Configure custom provider in providers
+    settings.providers.deepseek = {"base_url": "https://api.deepseek.com/v1", "api_key": "test-deepseek-key"}
+    provider = get_provider("deepseek", model="deepseek-chat", settings=settings, validate=True)
+    assert isinstance(provider, OpenAIProvider)
+    assert provider.name == "deepseek"
+    assert provider.model == "deepseek-chat"
+    assert provider.base_url == "https://api.deepseek.com/v1"
+    assert provider.api_key == "test-deepseek-key"
 
 
 def test_get_provider_default_ollama():

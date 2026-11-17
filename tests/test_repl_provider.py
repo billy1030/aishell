@@ -9,7 +9,7 @@ from aishell.providers.errors import AuthenticationError
 from aishell.ui.repl import InteractiveREPL
 
 
-def test_repl_prompt_tokens_include_provider_and_model():
+def test_repl_prompt_tokens():
     mock_provider = MagicMock()
     mock_provider.name = "gemini"
     mock_provider.model = "gemini-2.0-flash"
@@ -18,7 +18,7 @@ def test_repl_prompt_tokens_include_provider_and_model():
     tokens = repl.get_prompt_tokens()
     token_texts = [t[1] for t in tokens]
     full_prompt = "".join(token_texts)
-    assert "gemini:gemini-2.0-flash" in full_prompt
+    assert full_prompt in ("aishell $ ", "aishell # ")
 
 
 def test_repl_provider_meta_commands():

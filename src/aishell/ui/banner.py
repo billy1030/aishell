@@ -31,27 +31,39 @@ def contract_path(path: Optional[str] = None) -> str:
         return str(raw_path).replace("\\", "/")
 
 
-def format_prompt_string(cwd: Optional[str] = None, model_name: Optional[str] = None) -> str:
-    """Format prompt as plain string: aishell [~/dir] (model) > per D-01."""
-    contracted = contract_path(cwd)
-    model = model_name or "ollama"
-    return f"aishell [{contracted}] ({model}) > "
+def is_root_user() -> bool:
+    """Check if current process is running as root / superuser."""
+    try:
+        if hasattr(os, "geteuid"):
+            return os.geteuid() == 0
+    except Exception:
+        pass
+    user = os.environ.get("USER", os.environ.get("USERNAME", ""))
+    return user.lower() == "root"
+
+
+def format_prompt_string(
+    cwd: Optional[str] = None,
+    model_name: Optional[str] = None,
+    is_root: Optional[bool] = None,
+) -> str:
+    """Format clean shell prompt: 'aishell $ ' or 'aishell # '."""
+    root = is_root if is_root is not None else is_root_user()
+    symbol = "#" if root else "$"
+    return f"aishell {symbol} "
 
 
 def format_prompt(
-    cwd: Optional[str] = None, model_name: Optional[str] = None
+    cwd: Optional[str] = None,
+    model_name: Optional[str] = None,
+    is_root: Optional[bool] = None,
 ) -> List[Tuple[str, str]]:
-    """Format prompt as prompt_toolkit styled tokens: aishell [~/dir] (model) > per D-01."""
-    contracted = contract_path(cwd)
-    model = model_name or "ollama"
+    """Format prompt as prompt_toolkit styled tokens: 'aishell $ ' or 'aishell # '."""
+    root = is_root if is_root is not None else is_root_user()
+    symbol = "#" if root else "$"
     return [
         ("class:prompt.brand", "aishell"),
-        ("class:prompt.text", " ["),
-        ("class:prompt.path", contracted),
-        ("class:prompt.text", "] ("),
-        ("class:prompt.model", model),
-        ("class:prompt.text", ") "),
-        ("class:prompt.symbol", "> "),
+        ("class:prompt.symbol", f" {symbol} "),
     ]
 
 

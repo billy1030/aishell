@@ -22,19 +22,23 @@ from aishell.providers.schema import CommandProposal, parse_proposal_from_text
 
 
 class OpenAIProvider(BaseProvider):
-    """OpenAI API provider adapter for GPT models."""
+    """OpenAI API provider adapter for GPT models and OpenAI-compatible endpoints."""
 
     def __init__(
         self,
         model: str = "gpt-4o",
         api_key: Optional[str] = None,
         base_url: Optional[str] = None,
+        name: str = "openai",
     ) -> None:
-        super().__init__(name="openai", model=model)
+        super().__init__(name=name, model=model)
         if api_key is not None:
             self.api_key = api_key
         else:
-            self.api_key = os.environ.get("OPENAI_API_KEY")
+            self.api_key = (
+                os.environ.get(f"{name.upper()}_API_KEY")
+                or os.environ.get("OPENAI_API_KEY")
+            )
         self.base_url = base_url
         self._client: Optional[AsyncOpenAI] = None
 

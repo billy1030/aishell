@@ -8,9 +8,8 @@
 # ==============================================================================
 
 [general]
-# Active AI provider: "openai", "gemini", "anthropic", or "ollama"
-# Use "openai" for any OpenAI-compatible provider (MiniMax, Groq, DeepSeek, vLLM, etc.)
-default_provider = "openai"
+# Active AI provider: "minimax", "openai", "gemini", "anthropic", "ollama", or any custom OpenAI-compatible provider
+default_provider = "minimax"
 
 # Model name or identifier
 # Examples:
@@ -43,18 +42,22 @@ max_history_records = 10000
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# 1. OpenAI / OpenAI-Compatible Endpoints (MiniMax, DeepSeek, Groq, etc.)
+# 1. MiniMax (Use "minimax" in default_provider)
 # ------------------------------------------------------------------------------
-[providers.openai]
+[providers.minimax]
 # For MiniMax China platform:
 base_url = "https://api.minimaxi.com/v1"
 
 # For MiniMax Global platform (platform.minimax.io):
 # base_url = "https://api.minimax.io/v1"
 
-# For Official OpenAI (leave base_url commented out or use default):
-# base_url = "https://api.openai.com/v1"
+# API Key (can also be passed via MINIMAX_API_KEY environment variable)
+api_key = "your-api-key-here"
 
+# ------------------------------------------------------------------------------
+# 2. OpenAI & OpenAI-Compatible Endpoints (DeepSeek, Groq, vLLM, etc.)
+# ------------------------------------------------------------------------------
+[providers.openai]
 # API Key (can also be passed via OPENAI_API_KEY environment variable)
 api_key = "your-api-key-here"
 
@@ -77,3 +80,4 @@ api_key = "your-api-key-here"
 # ------------------------------------------------------------------------------
 [providers.ollama]
 base_url = "http://localhost:11434/v1"
+
