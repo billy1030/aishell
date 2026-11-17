@@ -1,0 +1,79 @@
+# ==============================================================================
+# aishell Configuration Template
+# Copy this file to ~/.config/aishell/config.toml
+#
+#   mkdir -p ~/.config/aishell
+#   cp config.example.toml ~/.config/aishell/config.toml
+#   chmod 600 ~/.config/aishell/config.toml
+# ==============================================================================
+
+[general]
+# Active AI provider: "openai", "gemini", "anthropic", or "ollama"
+# Use "openai" for any OpenAI-compatible provider (MiniMax, Groq, DeepSeek, vLLM, etc.)
+default_provider = "openai"
+
+# Model name or identifier
+# Examples:
+#   MiniMax:   "MiniMax-M3.1-Flash" or "MiniMax-Text-01"
+#   OpenAI:    "gpt-4o" or "o3-mini"
+#   Gemini:    "gemini-2.0-flash" or "gemini-1.5-pro"
+#   Anthropic: "claude-3-5-sonnet-20241022"
+#   Ollama:    "qwen2.5-coder:7b" or "llama3.2"
+model = "MiniMax-M3.1-Flash"
+
+# Terminal color theme: "dark" or "light"
+theme = "dark"
+
+[execution]
+# Command execution timeout in seconds before prompt cancellation
+timeout_seconds = 300.0
+
+# Maximum in-memory output buffer size in KB
+max_output_buffer_kb = 50
+
+# Maximum lines retained in circular ring buffer for scrollback
+ring_buffer_lines = 1000
+
+[storage]
+# Maximum commands retained in the SQLite audit log (~/.local/state/aishell/history.db)
+max_history_records = 10000
+
+# ==============================================================================
+# Provider Endpoints & Credentials
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. OpenAI / OpenAI-Compatible Endpoints (MiniMax, DeepSeek, Groq, etc.)
+# ------------------------------------------------------------------------------
+[providers.openai]
+# For MiniMax China platform:
+base_url = "https://api.minimaxi.com/v1"
+
+# For MiniMax Global platform (platform.minimax.io):
+# base_url = "https://api.minimax.io/v1"
+
+# For Official OpenAI (leave base_url commented out or use default):
+# base_url = "https://api.openai.com/v1"
+
+# API Key (can also be passed via OPENAI_API_KEY environment variable)
+api_key = "your-api-key-here"
+
+# ------------------------------------------------------------------------------
+# 2. Google Gemini
+# ------------------------------------------------------------------------------
+[providers.gemini]
+# API Key (can also be passed via GEMINI_API_KEY environment variable)
+# api_key = "AIzaSy..."
+
+# ------------------------------------------------------------------------------
+# 3. Anthropic Claude
+# ------------------------------------------------------------------------------
+[providers.anthropic]
+# API Key (can also be passed via ANTHROPIC_API_KEY environment variable)
+# api_key = "sk-ant-..."
+
+# ------------------------------------------------------------------------------
+# 4. Local Ollama (Offline / Private)
+# ------------------------------------------------------------------------------
+[providers.ollama]
+base_url = "http://localhost:11434/v1"
