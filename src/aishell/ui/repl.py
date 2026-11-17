@@ -31,8 +31,8 @@ class AishellCompleter(Completer):
     """Bash-style Tab completer for paths, meta commands, @skills, and shell commands."""
 
     _META_COMMANDS = (
-        ":exit", ":quit", ":help", ":clear", ":context", ":skills", ":skills reload",
-        "/exit", "/quit", "/help", "/clear", "/context", "/skills", "/skills reload",
+        ":exit", ":quit", ":help", ":clear", ":context", ":skills", ":skills reload", ":findskills",
+        "/exit", "/quit", "/help", "/clear", "/context", "/skills", "/skills reload", "/findskills",
         "/provider", "/model",
     )
 
@@ -300,7 +300,12 @@ class InteractiveREPL:
             if arg and arg.lower() == "reload":
                 self.skill_manager.reload()
                 self.console.print("[green]Reloaded AI skills.[/green]")
-            self._print_skills_table()
+                self._print_skills_table()
+            else:
+                self._print_skills_table(filter_query=arg)
+            return False
+        elif action in (":findskills", "/findskills", "findskills"):
+            self._print_skills_table(filter_query=arg)
             return False
         return False
 
@@ -344,19 +349,33 @@ class InteractiveREPL:
 
         return all_approved
 
-    def _print_skills_table(self) -> None:
-        """Render all loaded AI skills in a formatted Rich table."""
+    def _print_skills_table(self, filter_query: Optional[str] = None) -> None:
+        """Render loaded AI skills in a formatted Rich table, optionally filtered by keyword."""
         from rich.table import Table
 
-        table = Table(title="Available AI Skills", border_style="cyan")
+        skills = self.skill_manager.list_skills()
+        if filter_query:
+            q = filter_query.strip().lower()
+            skills = [
+                s for s in skills
+                if q in s.name.lower()
+                or q in s.description.lower()
+                or any(q in t.lower() for t in s.triggers)
+            ]
+
+        title = f"AI Skills matching '{filter_query}'" if filter_query else "Available AI Skills"
+        table = Table(title=title, border_style="cyan")
         table.add_column("Skill", style="bold cyan")
         table.add_column("Source", style="dim")
         table.add_column("Description", style="white")
 
-        for skill in self.skill_manager.list_skills():
+        for skill in skills:
             table.add_row(f"@{skill.name}", skill.source, skill.description)
 
-        self.console.print(table)
+        if not skills:
+            self.console.print(f"[yellow]No local skills matched '{filter_query}'. Try '@find-skills {filter_query}' to search online.[/yellow]")
+        else:
+            self.console.print(table)
         self.console.print(
             f"[dim]Drop custom SKILL.md files into {self.skill_manager.user_skills_dir} and run ':skills reload'.[/dim]"
         )
@@ -466,7 +485,7 @@ class InteractiveREPL:
         if (
             raw.startswith(":")
             or raw.startswith("/")
-            or first_token in ("exit", "quit", "help", "clear", "provider", "model", "context", "skills")
+            or first_token in ("exit", "quit", "help", "clear", "provider", "model", "context", "skills", "findskills")
         ):
             if self.handle_meta_command(raw):
                 raise EOFError()

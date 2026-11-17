@@ -74,6 +74,21 @@ BUILTIN_SKILLS: List[Skill] = [
         ),
     ),
     Skill(
+        name="find-skills",
+        description="Search local aishell skills or discover/install community SKILL.md skills via skills.sh / GitHub.",
+        triggers=["findskills", "find skills", "search skills", "discover skills", "install skill", "skills.sh"],
+        source="builtin",
+        instructions=(
+            "When asked to find, discover, or install AI skills:\n"
+            "1. For local skills, remind the user they can run `:skills` or `:findskills <keyword>` in aishell.\n"
+            "2. To search the community skills ecosystem (skills.sh / vercel-labs/skills), propose:\n"
+            "   `npx skills find <query>` (if Node/npx is available) or search GitHub:\n"
+            "   `curl -fsSL \"https://api.github.com/search/repositories?q=SKILL.md+<topic>&sort=stars&per_page=5\" | python3 -c \"import sys,json; [print(r['full_name'], '-', r.get('description','')) for r in json.load(sys.stdin).get('items',[])]\"`\n"
+            "3. To install a skill from skills.sh / GitHub into the project (`.agents/skills/`) or user (`~/.config/aishell/skills/`), "
+            "propose `npx skills add <owner/repo@skill>` or download the `SKILL.md` into `~/.config/aishell/skills/<name>/SKILL.md` and run `:skills reload`."
+        ),
+    ),
+    Skill(
         name="network-audit",
         description="Inspect listening sockets, firewall rules, DNS resolution, and network interfaces.",
         triggers=["port", "listening", "network", "dns", "firewall", "ip", "socket", "ss ", "netstat"],
