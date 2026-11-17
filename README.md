@@ -90,6 +90,21 @@ wsl aishell
   - `:context` / `:clear` / `:exit` (or `Ctrl+D` / `Ctrl+Z`)
 - **`?` Force AI Query**: Prefix with `?` (e.g. `? ls -la`) to ask the AI instead of running the command directly. You can also wake the AI with `@skill-name` or `ai_triggers` (`hi`, `please`, `ais`, `ai`, `help`).
 
+### Complex Multi-Step Task Examples
+
+- **Repo Study (`@repo-study`)**:
+  ```text
+  @repo-study clone https://github.com/elie222/rakazo into /tmp/rakazo, inspect its package manifests and entrypoints, and summarize the architecture and how to run it locally
+  ```
+- **Full System & Service Audit (`@systemd-triage` + `@network-audit`)**:
+  ```text
+  ? audit this server: check disk usage, memory/CPU load, failed systemd units, and all listening ports, then give me a prioritized summary of any issues
+  ```
+- **Docker + Logs Investigation (`@docker-debug`)**:
+  ```text
+  @docker-debug inspect all running and exited containers, check the last 50 log lines of any unhealthy or recently restarted container, and diagnose the root cause
+  ```
+
 ---
 
 ## Configuration
