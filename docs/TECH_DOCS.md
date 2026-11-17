@@ -25,6 +25,10 @@ src/aishell/
 │   ├── builtins.py         # Parent-process cd, export, unset synchronization
 │   ├── pty_runner.py       # Managed POSIX PTY runner with Windows fallback & ring buffer
 │   └── ring_buffer.py      # Circular in-memory output buffer (lines / KB bounds)
+├── mcp/
+│   ├── __init__.py         # Public exports for MCPManager and MCPTool schemas
+│   ├── client.py           # Lightweight JSON-RPC 2.0 stdio MCP client & server manager
+│   └── schema.py           # MCPServerConfig, MCPTool, MCPToolCall, & <mcp_call> parser
 ├── providers/
 │   ├── base.py             # Abstract BaseProvider interface & ChatMessage model
 │   ├── factory.py          # Provider resolution (minimax, openai, gemini, anthropic, ollama, custom)

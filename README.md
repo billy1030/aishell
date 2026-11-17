@@ -11,9 +11,14 @@ An interactive, system-aware Linux AI console assistant and REPL designed for de
 - **Managed Pseudo-Terminal (PTY):** Real-time command execution with full terminal fidelity, ANSI escape sequence handling, and interactive process management.
 - **State Synchronization:** Eliminates subshell amnesia by synchronizing directory changes (`cd`) and environment variable operations (`export`, `unset`) in the parent session.
 - **Autonomous Agentic Loop & AI Skills:**
-  - Multi-step autonomous execution up to `max_agent_steps` (default `6`): `aishell` runs an approved command, ingests `<command_output>`, and continues reasoning until the task is complete.
-  - Hierarchical AI Skills (`project` > `user` > `builtin`) with built-in `@repo-study`, `@web-search`, `@web-fetch`, `@systemd-triage`, `@docker-debug`, and `@network-audit`. Use `:skills` / `:skills reload` to manage custom `SKILL.md` files.
+  - Multi-step autonomous execution up to `max_agent_steps` (default `100`): `aishell` runs an approved command or MCP tool, ingests `<command_output>` / `<mcp_output>`, and continues reasoning until the task is complete.
+  - Hierarchical AI Skills (`project` > `user` > `builtin`) with built-in `@repo-study`, `@web-search`, `@web-fetch`, `@find-skills`, `@systemd-triage`, `@docker-debug`, and `@network-audit`. Use `:skills`, `:findskills <query>`, or `:skills reload` to manage skills.
   - Pre-approved read-only skills (`@web-search`, `@web-fetch`) and interactive session/permanent skill auto-approval (`[y=this session / p=permanent / N=ask each time]`).
+- **Model Context Protocol (MCP):**
+  - Lightweight `stdio` MCP client reading `~/.config/aishell/mcp.json`. Use `:mcp` / `:mcp reload` to inspect and refresh connected servers and tools.
+- **Bash-Style Tab Autocompletion & Rich UI:**
+  - Press `Tab` to complete file/directory paths, `@skill-name`, `:skills` / `:mcp` / `/context` meta commands, and Linux shell commands.
+  - `AI Assistant` bordered panel with condensed 2-line `<think>` streaming and `Ctrl+Z` / `Ctrl+D` / `:exit` clean exit.
 - **Deterministic Safety Gate:** Commands are evaluated before execution and categorized by blast-radius:
   - `[READ_ONLY]` (Green) — Safe observation commands (`ls`, `ps`, `cat`).
   - `[MUTATING]` (Yellow) — State-changing commands (`mkdir`, `systemctl restart`).
