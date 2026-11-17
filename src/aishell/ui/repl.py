@@ -420,7 +420,7 @@ class InteractiveREPL:
                     if last_exec:
                         _, exec_code, exec_output = last_exec
                         from aishell.context.privacy import PrivacyGuard
-                        redacted_out = PrivacyGuard().redact(exec_output or "")
+                        redacted_out = PrivacyGuard.redact_credentials(exec_output or "")
                         if len(redacted_out) > 4000:
                             redacted_out = redacted_out[:4000] + "\n...[truncated]..."
                         self.conversation.add_user_message(
