@@ -390,6 +390,7 @@ class InteractiveREPL:
 
         # Natural language query - Stream tokens from active AI provider
         raw = payload
+        self.safety_gate.reset_auto_approve()
         self.is_streaming = True
         accumulated_tokens = []
         try:

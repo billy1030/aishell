@@ -14,6 +14,7 @@ class GateAction(str, Enum):
     """Actions resulting from the confirmation gate prompt."""
 
     CONFIRM = "confirm"
+    ALL = "all"
     CANCEL = "cancel"
     EDIT = "edit"
 
@@ -57,13 +58,13 @@ def prompt_confirmation(
     render_proposal(proposal, console=c)
 
     # Step 3: Present interactive prompt
-    prompt_str = "Execute command? [y=run / N=cancel / e=edit]: "
+    prompt_str = "Execute command? [y=run / a=all / N=cancel / e=edit]: "
     try:
         if input_fn is not None:
             user_response = input_fn(prompt_str)
         else:
             c.print(
-                "[bold cyan]Execute command?[/bold cyan] [bold white]\\[y=run / N=cancel / e=edit][/bold white]: ",
+                "[bold cyan]Execute command?[/bold cyan] [bold white]\\[y=run / a=all / N=cancel / e=edit][/bold white]: ",
                 end="",
             )
             user_response = input()
@@ -72,6 +73,8 @@ def prompt_confirmation(
 
         if clean_resp in ("y", "yes"):
             return GateAction.CONFIRM
+        elif clean_resp in ("a", "all"):
+            return GateAction.ALL
         elif clean_resp in ("e", "edit"):
             return GateAction.EDIT
         else:
@@ -135,6 +138,11 @@ class SafetyGate:
 
     def __init__(self, console: Optional[Console] = None) -> None:
         self.console = console or Console()
+        self.auto_approve: bool = False
+
+    def reset_auto_approve(self) -> None:
+        """Reset per-task auto-approval flag."""
+        self.auto_approve = False
 
     def process_proposal(
         self,
@@ -162,7 +170,13 @@ class SafetyGate:
                 update={"risk_tier": effective_risk.value}
             )
 
-            # 2. Present confirmation prompt
+            # 2. If 'a' (All) was selected earlier in this task, auto-approve without re-prompting
+            if self.auto_approve:
+                render_proposal(current_proposal, console=c)
+                c.print("[dim]Auto-approved (all): executing command...[/dim]")
+                return current_proposal.command
+
+            # 3. Present confirmation prompt
             action = prompt_confirmation(
                 proposal=current_proposal,
                 console=c,
@@ -170,6 +184,9 @@ class SafetyGate:
             )
 
             if action == GateAction.CONFIRM:
+                return current_proposal.command
+            elif action == GateAction.ALL:
+                self.auto_approve = True
                 return current_proposal.command
 
             elif action == GateAction.EDIT:
