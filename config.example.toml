@@ -11,6 +11,9 @@
 # Active AI provider: "minimax", "openai", "gemini", "anthropic", "ollama", or any custom OpenAI-compatible provider
 default_provider = "minimax"
 
+# Maximum autonomous agent loop steps per goal
+max_agent_steps = 100
+
 # Model name or identifier
 # Examples:
 #   MiniMax:   "MiniMax-M3.1-Flash" or "MiniMax-Text-01"
