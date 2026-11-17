@@ -8,7 +8,7 @@ import time
 import uuid
 from typing import Callable, Iterable, List, Optional, Tuple
 from prompt_toolkit import PromptSession
-from prompt_toolkit.completion import PathCompleter, WordCompleter, merge_completers
+from prompt_toolkit.completion import Completer, Completion, PathCompleter, WordCompleter, merge_completers
 from prompt_toolkit.filters import has_focus
 from prompt_toolkit.formatted_text import to_formatted_text
 from prompt_toolkit.key_binding import KeyBindings
@@ -25,6 +25,50 @@ from aishell.skills.manager import SkillManager
 from aishell.ui.banner import format_prompt, get_prompt_style, render_banner
 from aishell.ui.history import SQLiteHistory
 from aishell.ui.renderer import RichStreamRenderer
+
+
+class AishellCompleter(Completer):
+    """Bash-style Tab completer for paths, meta commands, @skills, and shell commands."""
+
+    _META_COMMANDS = (
+        ":exit", ":quit", ":help", ":clear", ":context", ":skills", ":skills reload",
+        "/exit", "/quit", "/help", "/clear", "/context", "/skills", "/skills reload",
+        "/provider", "/model",
+    )
+
+    def __init__(self, skill_manager: SkillManager, shell_commands: frozenset[str]) -> None:
+        self.skill_manager = skill_manager
+        self.shell_commands = shell_commands
+        self.path_completer = PathCompleter(expanduser=True)
+
+    def get_completions(self, document, complete_event):
+        text = document.text_before_cursor
+        stripped = text.lstrip()
+
+        # 1. Meta commands (:skills, /context, etc.)
+        if stripped.startswith((":", "/")) and " " not in stripped:
+            for cmd in self._META_COMMANDS:
+                if cmd.startswith(stripped):
+                    yield Completion(cmd, start_position=-len(stripped))
+            return
+
+        # 2. @skill-name completion
+        word = document.get_word_before_cursor(WORD=True)
+        if word.startswith("@"):
+            prefix = word[1:].lower()
+            for skill in self.skill_manager.list_skills():
+                if skill.name.lower().startswith(prefix):
+                    yield Completion(f"@{skill.name}", start_position=-len(word))
+            return
+
+        # 3. First-token shell command completion (when not a path)
+        if " " not in stripped and not stripped.startswith((".", "/", "~")):
+            for cmd in sorted(self.shell_commands):
+                if cmd.startswith(stripped):
+                    yield Completion(cmd, start_position=-len(stripped))
+
+        # 4. File & directory path completion (like Bash)
+        yield from self.path_completer.get_completions(document, complete_event)
 
 
 class InteractiveREPL:
@@ -85,16 +129,7 @@ class InteractiveREPL:
         self.last_interrupt_time: float = 0.0
         self.is_streaming: bool = False
         self.kb = self._create_keybindings()
-        self.completer = merge_completers([
-            WordCompleter(
-                sorted(self._DIRECT_SHELL_COMMANDS | {
-                    ":help", ":context", ":history", ":clear", ":exit",
-                    "/provider", "/model", "ais", "please", "hi,",
-                }),
-                ignore_case=False,
-            ),
-            PathCompleter(expanduser=True),
-        ])
+        self.completer = AishellCompleter(self.skill_manager, self._DIRECT_SHELL_COMMANDS)
 
         try:
             self.session: PromptSession = PromptSession(
