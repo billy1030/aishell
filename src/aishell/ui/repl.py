@@ -191,6 +191,11 @@ class InteractiveREPL:
             else:
                 buf.validate_and_handle()
 
+        @kb.add("c-z")
+        def _exit_on_ctrl_z(event):
+            """Exit aishell cleanly on Ctrl+Z."""
+            event.app.exit(exception=EOFError())
+
         return kb
 
     def get_prompt_tokens(self) -> list:
