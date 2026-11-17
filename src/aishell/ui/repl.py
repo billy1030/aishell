@@ -9,6 +9,7 @@ import uuid
 from typing import Callable, Iterable, List, Optional, Tuple
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import Completer, Completion, PathCompleter, WordCompleter, merge_completers
+from prompt_toolkit.document import Document
 from prompt_toolkit.filters import has_focus
 from prompt_toolkit.formatted_text import to_formatted_text
 from prompt_toolkit.key_binding import KeyBindings
@@ -69,8 +70,9 @@ class AishellCompleter(Completer):
                 if cmd.startswith(stripped):
                     yield Completion(cmd, start_position=-len(stripped))
 
-        # 4. File & directory path completion (like Bash)
-        yield from self.path_completer.get_completions(document, complete_event)
+        # 4. File & directory path completion on the current word (like Bash)
+        path_doc = Document(word, cursor_position=len(word))
+        yield from self.path_completer.get_completions(path_doc, complete_event)
 
 
 class InteractiveREPL:
