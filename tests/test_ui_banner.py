@@ -26,24 +26,27 @@ def test_contract_path(tmp_path: Path):
 
 
 def test_format_prompt_string():
-    prompt_user = format_prompt_string(is_root=False)
-    assert prompt_user == "aishell $ "
+    home = str(Path.home().resolve())
+    prompt_user = format_prompt_string(cwd=home, is_root=False)
+    assert prompt_user == "aishell:~ $ "
 
-    prompt_root = format_prompt_string(is_root=True)
-    assert prompt_root == "aishell # "
+    prompt_root = format_prompt_string(cwd=home, is_root=True)
+    assert prompt_root == "aishell:~ # "
 
 
 def test_format_prompt_tokens():
-    tokens = format_prompt(is_root=False)
+    home = str(Path.home().resolve())
+    tokens = format_prompt(cwd=home, is_root=False)
     text = "".join(tok[1] for tok in tokens)
-    assert text == "aishell $ "
+    assert text == "aishell:~ $ "
 
-    tokens_root = format_prompt(is_root=True)
+    tokens_root = format_prompt(cwd=home, is_root=True)
     text_root = "".join(tok[1] for tok in tokens_root)
-    assert text_root == "aishell # "
+    assert text_root == "aishell:~ # "
 
     # Check token classes
     assert "class:prompt.brand" in [tok[0] for tok in tokens]
+    assert "class:prompt.path" in [tok[0] for tok in tokens]
     assert "class:prompt.symbol" in [tok[0] for tok in tokens]
 
 

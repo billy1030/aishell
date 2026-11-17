@@ -47,10 +47,11 @@ def format_prompt_string(
     model_name: Optional[str] = None,
     is_root: Optional[bool] = None,
 ) -> str:
-    """Format clean shell prompt: 'aishell $ ' or 'aishell # '."""
+    """Format clean shell prompt with current directory: 'aishell:~/repo $ ' or 'aishell:~/repo # '."""
     root = is_root if is_root is not None else is_root_user()
     symbol = "#" if root else "$"
-    return f"aishell {symbol} "
+    path_str = contract_path(cwd)
+    return f"aishell:{path_str} {symbol} "
 
 
 def format_prompt(
@@ -58,11 +59,14 @@ def format_prompt(
     model_name: Optional[str] = None,
     is_root: Optional[bool] = None,
 ) -> List[Tuple[str, str]]:
-    """Format prompt as prompt_toolkit styled tokens: 'aishell $ ' or 'aishell # '."""
+    """Format prompt as prompt_toolkit styled tokens: 'aishell:~/repo $ ' or 'aishell:~/repo # '."""
     root = is_root if is_root is not None else is_root_user()
     symbol = "#" if root else "$"
+    path_str = contract_path(cwd)
     return [
         ("class:prompt.brand", "aishell"),
+        ("class:prompt.text", ":"),
+        ("class:prompt.path", path_str),
         ("class:prompt.symbol", f" {symbol} "),
     ]
 
