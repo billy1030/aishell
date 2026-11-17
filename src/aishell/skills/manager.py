@@ -1,8 +1,9 @@
 """Skill discovery, YAML frontmatter parsing, and dynamic prompt injection."""
 
+import json
 import re
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 from aishell.config.settings import get_default_config_dir
 from aishell.skills.builtins import BUILTIN_SKILLS
 from aishell.skills.schema import Skill
@@ -164,4 +165,32 @@ class SkillManager:
                 "</active_skill>"
             )
         return "\n\n".join(blocks)
+
+    @property
+    def _approvals_path(self) -> Path:
+        return self.user_skills_dir.parent / "approved_skills.json"
+
+    def load_approved_skills(self) -> Set[str]:
+        """Load permanently auto-approved skill names from disk."""
+        try:
+            if self._approvals_path.is_file():
+                data = json.loads(self._approvals_path.read_text(encoding="utf-8"))
+                if isinstance(data, list):
+                    return {str(x).strip().lower() for x in data if str(x).strip()}
+        except Exception:
+            pass
+        return set()
+
+    def save_approved_skill(self, skill_name: str) -> None:
+        """Persist a skill name as permanently auto-approved."""
+        approved = self.load_approved_skills()
+        approved.add(skill_name.strip().lower())
+        try:
+            self._approvals_path.parent.mkdir(parents=True, exist_ok=True)
+            self._approvals_path.write_text(
+                json.dumps(sorted(approved), indent=2),
+                encoding="utf-8",
+            )
+        except Exception:
+            pass
 

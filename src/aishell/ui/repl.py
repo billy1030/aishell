@@ -56,6 +56,7 @@ class InteractiveREPL:
         self.renderer = RichStreamRenderer(console=self.console)
         self.executor_fn = executor_fn
         self.skill_manager = skill_manager or SkillManager()
+        self._session_approved_skills: set[str] = set()
         self.max_agent_steps = max(
             1,
             max_agent_steps
@@ -260,6 +261,46 @@ class InteractiveREPL:
             return False
         return False
 
+    def _check_skill_approvals(self, matched_skills) -> bool:
+        """Ask whether matched skills should auto-approve commands for this session or permanently."""
+        if not matched_skills:
+            return False
+
+        from aishell.safety.gate import is_interactive_stdin
+
+        permanent = self.skill_manager.load_approved_skills()
+        all_approved = True
+
+        for skill in matched_skills:
+            s_key = skill.name.lower()
+            if s_key in permanent or s_key in self._session_approved_skills:
+                continue
+
+            if not is_interactive_stdin():
+                all_approved = False
+                continue
+
+            try:
+                self.console.print(
+                    f"[bold cyan]Allow skill '@{skill.name}' to auto-run commands?[/bold cyan] "
+                    "[bold white]\\[y=this session / p=permanent / N=ask each time][/bold white]: ",
+                    end="",
+                )
+                ans = input().strip().lower()
+            except (KeyboardInterrupt, EOFError):
+                ans = "n"
+
+            if ans in ("y", "yes"):
+                self._session_approved_skills.add(s_key)
+            elif ans in ("p", "perm", "permanent"):
+                self._session_approved_skills.add(s_key)
+                self.skill_manager.save_approved_skill(skill.name)
+                self.console.print(f"[green]Saved permanent auto-approval for '@{skill.name}'.[/green]")
+            else:
+                all_approved = False
+
+        return all_approved
+
     def _print_skills_table(self) -> None:
         """Render all loaded AI skills in a formatted Rich table."""
         from rich.table import Table
@@ -411,6 +452,8 @@ class InteractiveREPL:
             if matched_skills:
                 skill_names = ", ".join(f"@{s.name}" for s in matched_skills)
                 self.console.print(f"[dim]Active skills: {skill_names}[/dim]")
+                if self._check_skill_approvals(matched_skills):
+                    self.safety_gate.auto_approve = True
 
             # Autonomous agentic loop
             last_proposed_cmd = None
