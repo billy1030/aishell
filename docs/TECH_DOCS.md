@@ -61,8 +61,8 @@ src/aishell/
 
 Inside the interactive REPL, user input is routed without waking the AI unnecessarily:
 
-1. **Meta Commands**: `:exit`, `:quit`, `:help`, `:clear`, `:context`, `/provider`, `/model` (and bare `exit`, `quit`, `help`, `clear`).
-2. **Explicit AI Wake-Up Triggers**: Inputs starting with `ais`, `ai`, `hi`, `hello`, `hey`, `please`, or `?` always route to the AI assistant—even if followed by a command name (e.g., `ais ls`).
+1. **Meta Commands**: `:exit`, `:quit`, `:help`, `:clear`, `:context`, `:skills` (`:skills reload`), `/provider`, `/model` (and bare `exit`, `quit`, `help`, `clear`, `skills`). `Ctrl+D` or `Ctrl+Z` also exits cleanly.
+2. **Explicit AI Wake-Up Triggers**: Inputs starting with `@` (skill mention), `ais`, `ai`, `hi`, `hello`, `hey`, `please`, or `?` always route to the AI assistant—even if followed by a command name (e.g., `ais ls`).
 3. **Direct Shell Execution**:
    - Explicit prefixes (`!cmd`, `$cmd`).
    - Shell builtins (`cd`, `export`, `unset`, `pwd`, `echo`, `alias`, `source`).

@@ -8,11 +8,15 @@ An interactive, system-aware Linux AI console assistant and REPL designed for de
 
 - **Managed Pseudo-Terminal (PTY):** Real-time command execution with full terminal fidelity, ANSI escape sequence handling, and interactive process management.
 - **State Synchronization:** Eliminates subshell amnesia by synchronizing directory changes (`cd`) and environment variable operations (`export`, `unset`) in the parent session.
+- **Autonomous Agentic Loop & AI Skills:**
+  - Multi-step autonomous execution up to `max_agent_steps` (default `6`): `aishell` runs an approved command, ingests `<command_output>`, and continues reasoning until the task is complete.
+  - Hierarchical AI Skills (`project` > `user` > `builtin`) with built-in `@repo-study`, `@web-search`, `@web-fetch`, `@systemd-triage`, `@docker-debug`, and `@network-audit`. Use `:skills` / `:skills reload` to manage custom `SKILL.md` files.
+  - Pre-approved read-only skills (`@web-search`, `@web-fetch`) and interactive session/permanent skill auto-approval (`[y=this session / p=permanent / N=ask each time]`).
 - **Deterministic Safety Gate:** Commands are evaluated before execution and categorized by blast-radius:
   - `[READ_ONLY]` (Green) — Safe observation commands (`ls`, `ps`, `cat`).
   - `[MUTATING]` (Yellow) — State-changing commands (`mkdir`, `systemctl restart`).
   - `[HIGH_RISK]` (Red) — Destructive operations, file deletions (`rm -rf`), and privilege escalation (`sudo`).
-  - Interactive `[y/N/e]` human gate with inline command editing before running.
+  - Interactive `[y=run / a=all / N=cancel / e=edit]` human gate with inline command editing and per-task `a=all` approval.
 - **Privacy & Prompt Injection Defense:**
   - Automated credential redaction (`PrivacyGuard`) strips API tokens, private keys, and passwords before sending prompts to the AI provider.
   - Untrusted system metadata and command outputs are enclosed in `<context untrusted="true">` blocks.
