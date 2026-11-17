@@ -5,6 +5,7 @@ capability detection, and safe degradation for non-TTY or dumb terminals per REP
 """
 
 import os
+import re
 import sys
 from contextlib import contextmanager
 from typing import Any, Dict, Generator, Iterable, Optional
@@ -46,6 +47,25 @@ def detect_terminal_capabilities() -> Dict[str, Any]:
         "color_system": color_system,
         "interactive": is_tty and term != "dumb",
     }
+
+
+def _condense_thinking(text: str) -> str:
+    """Condense <think>...</think> blocks to at most 2 lines while streaming, and hide once complete."""
+    if "<think>" not in text:
+        return text
+
+    # Strip any completed <think>...</think> blocks
+    cleaned = re.sub(r"<think>[\s\S]*?</think>\s*", "", text)
+
+    # If an unclosed <think> block is still streaming, show only its last 2 non-empty lines
+    if "<think>" in cleaned:
+        before, _, thinking_part = cleaned.partition("<think>")
+        lines = [ln.strip() for ln in thinking_part.splitlines() if ln.strip()]
+        tail = lines[-2:] if lines else ["..."]
+        preview = "\n".join(f"> {ln[:100]}" for ln in tail)
+        return f"{before}*Thinking...*\n{preview}".strip()
+
+    return cleaned
 
 
 class RichStreamRenderer:
@@ -126,7 +146,9 @@ class RichStreamRenderer:
             try:
                 for token in token_stream:
                     accumulated_text += token
-                    live.update(Markdown(accumulated_text, code_theme=code_theme))
+                    display_text = _condense_thinking(accumulated_text)
+                    if display_text:
+                        live.update(Markdown(display_text, code_theme=code_theme))
             finally:
                 if not accumulated_text:
                     live.update(Text(""))
