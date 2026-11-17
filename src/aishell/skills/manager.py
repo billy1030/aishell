@@ -170,16 +170,19 @@ class SkillManager:
     def _approvals_path(self) -> Path:
         return self.user_skills_dir.parent / "approved_skills.json"
 
+    DEFAULT_PREAPPROVED_SKILLS: Set[str] = {"web-search", "web-fetch"}
+
     def load_approved_skills(self) -> Set[str]:
-        """Load permanently auto-approved skill names from disk."""
+        """Load permanently auto-approved skill names from disk, including pre-approved defaults."""
+        approved = set(self.DEFAULT_PREAPPROVED_SKILLS)
         try:
             if self._approvals_path.is_file():
                 data = json.loads(self._approvals_path.read_text(encoding="utf-8"))
                 if isinstance(data, list):
-                    return {str(x).strip().lower() for x in data if str(x).strip()}
+                    approved.update(str(x).strip().lower() for x in data if str(x).strip())
         except Exception:
             pass
-        return set()
+        return approved
 
     def save_approved_skill(self, skill_name: str) -> None:
         """Persist a skill name as permanently auto-approved."""
