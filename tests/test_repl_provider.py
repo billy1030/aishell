@@ -18,7 +18,8 @@ def test_repl_prompt_tokens():
     tokens = repl.get_prompt_tokens()
     token_texts = [t[1] for t in tokens]
     full_prompt = "".join(token_texts)
-    assert full_prompt in ("aishell $ ", "aishell # ")
+    assert full_prompt.startswith("aishell:")
+    assert full_prompt.endswith((" $ ", " # "))
 
 
 def test_repl_provider_meta_commands():

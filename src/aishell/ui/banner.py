@@ -42,15 +42,46 @@ def is_root_user() -> bool:
     return user.lower() == "root"
 
 
+def get_git_branch_info(cwd: Optional[str] = None) -> Optional[str]:
+    """Return active Git branch with '*' suffix when dirty, or None if not in a repo."""
+    try:
+        import subprocess
+
+        target_dir = cwd or os.getcwd()
+        branch = subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=target_dir,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=0.3,
+        ).strip()
+        if not branch:
+            return None
+        dirty = subprocess.check_output(
+            ["git", "status", "--porcelain"],
+            cwd=target_dir,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=0.3,
+        ).strip()
+        return f"{branch}*" if dirty else branch
+    except Exception:
+        return None
+
+
 def format_prompt_string(
     cwd: Optional[str] = None,
     model_name: Optional[str] = None,
     is_root: Optional[bool] = None,
+    include_git: bool = False,
 ) -> str:
     """Format clean shell prompt with current directory: 'aishell:~/repo $ ' or 'aishell:~/repo # '."""
     root = is_root if is_root is not None else is_root_user()
     symbol = "#" if root else "$"
     path_str = contract_path(cwd)
+    branch_info = get_git_branch_info(cwd) if include_git else None
+    if branch_info:
+        return f"aishell:{path_str} ({branch_info}) {symbol} "
     return f"aishell:{path_str} {symbol} "
 
 
@@ -58,17 +89,22 @@ def format_prompt(
     cwd: Optional[str] = None,
     model_name: Optional[str] = None,
     is_root: Optional[bool] = None,
+    include_git: bool = False,
 ) -> List[Tuple[str, str]]:
     """Format prompt as prompt_toolkit styled tokens: 'aishell:~/repo $ ' or 'aishell:~/repo # '."""
     root = is_root if is_root is not None else is_root_user()
     symbol = "#" if root else "$"
     path_str = contract_path(cwd)
-    return [
+    tokens: List[Tuple[str, str]] = [
         ("class:prompt.brand", "aishell"),
         ("class:prompt.text", ":"),
         ("class:prompt.path", path_str),
-        ("class:prompt.symbol", f" {symbol} "),
     ]
+    branch_info = get_git_branch_info(cwd) if include_git else None
+    if branch_info:
+        tokens.append(("class:prompt.model", f" ({branch_info})"))
+    tokens.append(("class:prompt.symbol", f" {symbol} "))
+    return tokens
 
 
 def get_prompt_style() -> Style:

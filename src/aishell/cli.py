@@ -10,7 +10,7 @@ from rich.console import Console
 from typer.core import TyperGroup
 
 from aishell.config.settings import get_settings
-from aishell.execution.builtins import sync_compound_cwd, try_execute_builtin
+from aishell.execution.builtins import expand_alias, sync_compound_cwd, try_execute_builtin
 from aishell.execution.pty_runner import run_in_pty
 from aishell.storage.history import HistoryManager
 from aishell.ui.renderer import RichStreamRenderer
@@ -69,6 +69,7 @@ def read_piped_stdin() -> Optional[str]:
 
 def execute_pipeline_capture(command: str, session_id: Optional[str] = None) -> tuple[int, str]:
     """Core execution pipeline returning (exit_code, output) for diagnostics and AI context."""
+    command = expand_alias(command)
     settings = get_settings()
     history = HistoryManager(
         db_path=settings.storage.history_db_path,

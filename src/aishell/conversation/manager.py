@@ -1,5 +1,7 @@
 """Multi-turn conversational memory and sliding-window context compaction."""
 
+import json
+from pathlib import Path
 from typing import List, Optional
 from aishell.providers.base import ChatMessage
 
@@ -116,4 +118,34 @@ class ConversationManager:
         """Reset all conversational messages and compaction summary."""
         self.messages.clear()
         self.summary = None
+
+    def save_to_file(self, path: Path) -> None:
+        """Persist active conversation summary and messages to JSON."""
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            payload = {
+                "summary": self.summary,
+                "messages": [{"role": m.role, "content": m.content} for m in self.messages],
+            }
+            path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        except Exception:
+            pass
+
+    def load_from_file(self, path: Path) -> int:
+        """Restore conversation summary and messages from JSON. Returns restored message count."""
+        if not path.is_file():
+            return 0
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            raw_msgs = data.get("messages", [])
+            restored: List[ChatMessage] = []
+            for item in raw_msgs:
+                if isinstance(item, dict) and item.get("role") and item.get("content"):
+                    restored.append(ChatMessage(role=str(item["role"]), content=str(item["content"])))
+            self.messages = restored
+            raw_summary = data.get("summary")
+            self.summary = str(raw_summary) if raw_summary else None
+            return len(self.messages)
+        except Exception:
+            return 0
 

@@ -136,9 +136,10 @@ def prompt_edit_command(
 class SafetyGate:
     """Coordinates risk evaluation, proposal display, confirmation, and inline editing per D-05."""
 
-    def __init__(self, console: Optional[Console] = None) -> None:
+    def __init__(self, console: Optional[Console] = None, auto_approve_safe: bool = False) -> None:
         self.console = console or Console()
         self.auto_approve: bool = False
+        self.auto_approve_safe: bool = auto_approve_safe
 
     def reset_auto_approve(self) -> None:
         """Reset per-task auto-approval flag."""
@@ -170,10 +171,15 @@ class SafetyGate:
                 update={"risk_tier": effective_risk.value}
             )
 
-            # 2. If 'a' (All) was selected earlier in this task, auto-approve without re-prompting
+            # 2. Auto-approve if 'a' (All) was selected or if [SAFE] auto-run is enabled
             if self.auto_approve:
                 render_proposal(current_proposal, console=c)
                 c.print("[dim]Auto-approved (all): executing command...[/dim]")
+                return current_proposal.command
+
+            if self.auto_approve_safe and effective_risk == RiskLevel.SAFE and not current_proposal.requires_sudo:
+                render_proposal(current_proposal, console=c)
+                c.print("[dim]Auto-approved \\[SAFE] read-only command...[/dim]")
                 return current_proposal.command
 
             # 3. Present confirmation prompt

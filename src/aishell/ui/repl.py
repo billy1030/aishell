@@ -6,6 +6,7 @@ import shutil
 import sys
 import time
 import uuid
+from pathlib import Path
 from typing import Callable, Iterable, List, Optional, Tuple
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import Completer, Completion, PathCompleter, WordCompleter, merge_completers
@@ -16,10 +17,11 @@ from prompt_toolkit.key_binding import KeyBindings
 from rich.console import Console
 from rich.panel import Panel
 
-from aishell.config.settings import AishellSettings, get_settings
+from aishell.config.settings import AishellSettings, get_default_state_dir, get_settings
 from aishell.conversation.manager import ConversationManager
 from aishell.diagnostics.engine import DiagnosticEngine
 from aishell.diagnostics.remediation import RemediationController
+from aishell.execution.builtins import ALIASES
 from aishell.mcp.client import MCPManager
 from aishell.mcp.schema import extract_mcp_call_from_text
 from aishell.providers.base import BaseProvider
@@ -34,8 +36,12 @@ class AishellCompleter(Completer):
     """Bash-style Tab completer for paths, meta commands, @skills, and shell commands."""
 
     _META_COMMANDS = (
-        ":exit", ":quit", ":help", ":clear", ":context", ":skills", ":skills reload", ":findskills", ":mcp", ":mcp reload",
-        "/exit", "/quit", "/help", "/clear", "/context", "/skills", "/skills reload", "/findskills", "/mcp", "/mcp reload",
+        ":exit", ":quit", ":help", ":clear", ":context", ":skills", ":skills reload",
+        ":skills install", ":skills create", ":findskills", ":mcp", ":mcp reload",
+        ":autorun", ":autorun safe", ":autorun off", ":save", ":export", ":resume",
+        "/exit", "/quit", "/help", "/clear", "/context", "/skills", "/skills reload",
+        "/skills install", "/skills create", "/findskills", "/mcp", "/mcp reload",
+        "/autorun", "/autorun safe", "/autorun off", "/save", "/export", "/resume",
         "/provider", "/model",
     )
 
@@ -51,7 +57,7 @@ class AishellCompleter(Completer):
         # 1. Meta commands (:skills, /context, etc.)
         if stripped.startswith((":", "/")) and " " not in stripped:
             for cmd in self._META_COMMANDS:
-                if cmd.startswith(stripped):
+                if " " not in cmd and cmd.startswith(stripped):
                     yield Completion(cmd, start_position=-len(stripped))
             return
 
@@ -64,9 +70,10 @@ class AishellCompleter(Completer):
                     yield Completion(f"@{skill.name}", start_position=-len(word))
             return
 
-        # 3. First-token shell command completion (when not a path)
+        # 3. First-token shell command & alias completion (when not a path)
         if " " not in stripped and not stripped.startswith((".", "/", "~")):
-            for cmd in sorted(self.shell_commands):
+            candidates = sorted(self.shell_commands | set(ALIASES.keys()))
+            for cmd in candidates:
                 if cmd.startswith(stripped):
                     yield Completion(cmd, start_position=-len(stripped))
 
@@ -101,12 +108,17 @@ class InteractiveREPL:
         self.console = console or Console()
         self.session_id = str(uuid.uuid4())[:8]
         self.history = history or SQLiteHistory(session_id=self.session_id)
-        self.safety_gate = SafetyGate(console=self.console)
+        self.safety_gate = SafetyGate(
+            console=self.console,
+            auto_approve_safe=getattr(self.settings.general, "auto_approve_safe", False),
+        )
         self.renderer = RichStreamRenderer(console=self.console)
         self.executor_fn = executor_fn
         self.skill_manager = skill_manager or SkillManager()
         self.mcp_manager = mcp_manager or MCPManager()
         self._session_approved_skills: set[str] = set()
+        self.executed_commands: List[str] = []
+        self._conversation_state_path: Path = get_default_state_dir() / "last_conversation.json"
         self.max_agent_steps = max(
             1,
             max_agent_steps
@@ -205,6 +217,8 @@ class InteractiveREPL:
             output = f"Command exited with code {exit_code}"
 
         self._last_execution = (command, exit_code, output)
+        if exit_code == 0 and command.strip():
+            self.executed_commands.append(command.strip())
         first_cmd = command.strip().split()[0].lower() if command.strip() else ""
         if exit_code not in (0, 127, 130) and first_cmd not in self._INTERACTIVE_NO_REMEDIATE:
             return self._trigger_remediation(command, exit_code, output)
@@ -247,8 +261,8 @@ class InteractiveREPL:
         return kb
 
     def get_prompt_tokens(self) -> list:
-        """Return clean prompt tokens: 'aishell $ ' or 'aishell # '."""
-        return format_prompt()
+        """Return clean prompt tokens with repo path and Git branch status."""
+        return format_prompt(include_git=True)
 
     def handle_meta_command(self, cmd: str) -> bool:
         """Handle internal meta commands (:exit, :quit, /clear, /help, /provider, /model).
@@ -308,15 +322,68 @@ class InteractiveREPL:
             render_context_table(ctx_info, console=self.console)
             return False
         elif action in (":skills", "/skills", "skills"):
-            if arg and arg.lower() == "reload":
-                self.skill_manager.reload()
-                self.console.print("[green]Reloaded AI skills.[/green]")
-                self._print_skills_table()
-            else:
-                self._print_skills_table(filter_query=arg)
+            if arg:
+                sub_parts = arg.split(maxsplit=1)
+                sub_cmd = sub_parts[0].lower()
+                sub_arg = sub_parts[1].strip() if len(sub_parts) > 1 else ""
+                if sub_cmd == "reload":
+                    self.skill_manager.reload()
+                    self.console.print("[green]Reloaded AI skills.[/green]")
+                    self._print_skills_table()
+                    return False
+                elif sub_cmd == "install" and sub_arg:
+                    try:
+                        skill = self.skill_manager.install_skill(sub_arg)
+                        self.console.print(
+                            f"[green]Installed skill '@{skill.name}' to {self.skill_manager.user_skills_dir / skill.name / 'SKILL.md'}.[/green]"
+                        )
+                    except Exception as exc:
+                        self.renderer.render_error(str(exc))
+                    return False
+                elif sub_cmd == "create" and sub_arg:
+                    path = self.skill_manager.create_skill(sub_arg)
+                    self.console.print(f"[green]Created skill template at {path}.[/green]")
+                    return False
+            self._print_skills_table(filter_query=arg)
             return False
         elif action in (":findskills", "/findskills", "findskills"):
             self._print_skills_table(filter_query=arg)
+            return False
+        elif action in (":autorun", "/autorun", "autorun"):
+            mode = (arg or "").strip().lower()
+            if mode in ("safe", "on", "true", "1"):
+                self.safety_gate.auto_approve_safe = True
+                self.console.print("[green]Auto-approve \\[SAFE] read-only commands enabled.[/green]")
+            elif mode in ("off", "false", "0"):
+                self.safety_gate.auto_approve_safe = False
+                self.console.print("[yellow]Auto-approve \\[SAFE] read-only commands disabled.[/yellow]")
+            else:
+                state = "safe (auto-run read-only)" if self.safety_gate.auto_approve_safe else "off"
+                self.console.print(f"[bold cyan]Autorun mode:[/bold cyan] {state} [dim](use ':autorun safe' or ':autorun off')[/dim]")
+            return False
+        elif action in (":save", "/save", "save"):
+            target = Path(arg or "aishell-session.md")
+            lines = ["# aishell Session Export\n"]
+            if self.conversation.summary:
+                lines.append(f"## Summary\n{self.conversation.summary}\n")
+            for msg in self.conversation.messages:
+                lines.append(f"### {msg.role.capitalize()}\n{msg.content}\n")
+            target.write_text("\n".join(lines), encoding="utf-8")
+            self.console.print(f"[green]Saved session ({len(self.conversation.messages)} messages) to {target}.[/green]")
+            return False
+        elif action in (":export", "/export"):
+            target = Path(arg or "aishell-playbook.sh")
+            script_lines = ["#!/usr/bin/env bash", "set -euo pipefail", ""]
+            script_lines.extend(self.executed_commands)
+            target.write_text("\n".join(script_lines) + "\n", encoding="utf-8")
+            self.console.print(f"[green]Exported {len(self.executed_commands)} commands to {target}.[/green]")
+            return False
+        elif action in (":resume", "/resume", "resume"):
+            count = self.conversation.load_from_file(self._conversation_state_path)
+            if count:
+                self.console.print(f"[green]Resumed previous conversation ({count} messages restored).[/green]")
+            else:
+                self.console.print("[yellow]No previous conversation found to resume.[/yellow]")
             return False
         elif action in (":mcp", "/mcp", "mcp"):
             if arg and arg.lower() == "reload":
@@ -456,12 +523,14 @@ class InteractiveREPL:
             "• [bold green]Natural Language Query:[/bold green] Type your question or intent directly\n"
             "• [bold green]Direct Shell Command:[/bold green] Prefix with [bold yellow]![/bold yellow] or run standard builtins (`cd`, `export`)\n"
             "• [bold green]System Context:[/bold green] Type [bold yellow]/context[/bold yellow] to inspect host facts and sanitized environment\n"
-            "• [bold green]AI Skills:[/bold green] Type [bold yellow]/skills[/bold yellow] to list active skills or [bold yellow]/skills reload[/bold yellow] to refresh\n"
+            "• [bold green]AI Skills:[/bold green] [bold yellow]:skills[/bold yellow], [bold yellow]:skills install <spec>[/bold yellow], [bold yellow]:skills create <name>[/bold yellow], [bold yellow]:findskills <query>[/bold yellow]\n"
+            "• [bold green]MCP & Autorun:[/bold green] [bold yellow]:mcp[/bold yellow] to inspect tools • [bold yellow]:autorun safe|off[/bold yellow] to toggle \\[SAFE] auto-execution\n"
+            "• [bold green]Session & Export:[/bold green] [bold yellow]:save file.md[/bold yellow] • [bold yellow]:export script.sh[/bold yellow] • [bold yellow]:resume[/bold yellow]\n"
             "• [bold green]Switch Provider / Model:[/bold green] [bold yellow]/provider <name>[/bold yellow] or [bold yellow]/model <name>[/bold yellow]\n"
             "• [bold green]Multiline Input:[/bold green] Press [bold yellow]Alt+Enter[/bold yellow] or end line with trailing [bold yellow]\\[/bold yellow]\n"
             "• [bold green]History Search:[/bold green] Press [bold yellow]Ctrl+R[/bold yellow] to reverse search command history\n"
             "• [bold green]Interrupt Stream:[/bold green] Press [bold yellow]Ctrl+C[/bold yellow] to halt active generation\n"
-            "• [bold green]Exit Session:[/bold green] Type [bold yellow]:exit[/bold yellow] or press [bold yellow]Ctrl+D[/bold yellow]"
+            "• [bold green]Exit Session:[/bold green] Type [bold yellow]:exit[/bold yellow], press [bold yellow]Ctrl+D[/bold yellow] or [bold yellow]Ctrl+Z[/bold yellow]"
         )
         self.console.print(Panel(content, border_style="cyan", expand=False))
 
@@ -535,6 +604,7 @@ class InteractiveREPL:
         if not raw.endswith("?"):
             if (
                 first_token in self._DIRECT_SHELL_COMMANDS
+                or first_token in ALIASES
                 or first_token.startswith(("./", "/", "~/"))
                 or self._ENV_ASSIGN_RE.match(tokens[0])
                 or first_token in ("for", "while", "until", "if", "case", "function", "[[")
@@ -561,7 +631,10 @@ class InteractiveREPL:
         if (
             raw.startswith(":")
             or raw.startswith("/")
-            or first_token in ("exit", "quit", "help", "clear", "provider", "model", "context", "skills", "findskills", "mcp")
+            or first_token in (
+                "exit", "quit", "help", "clear", "provider", "model",
+                "context", "skills", "findskills", "mcp", "autorun", "save", "resume",
+            )
         ):
             if self.handle_meta_command(raw):
                 raise EOFError()
@@ -752,6 +825,8 @@ class InteractiveREPL:
             self.renderer.render_error(f"Generation error: {exc}")
         finally:
             self.is_streaming = False
+            if self.conversation.messages:
+                self.conversation.save_to_file(self._conversation_state_path)
 
     def _cleanup_async_loop(self) -> None:
         """Safely shut down provider clients, async generators, and pending tasks."""

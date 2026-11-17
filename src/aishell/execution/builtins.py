@@ -9,9 +9,52 @@ import os
 import re
 import shlex
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
-BUILTIN_COMMANDS = {"cd", "export", "unset"}
+BUILTIN_COMMANDS = {"cd", "export", "unset", "alias", "unalias"}
+
+ALIASES: Dict[str, str] = {
+    "ll": "ls -alF",
+    "la": "ls -A",
+    "l": "ls -CF",
+    "..": "cd ..",
+}
+
+_ALIAS_LINE_RE = re.compile(r"^\s*alias\s+([A-Za-z0-9_.\-]+)\s*=\s*(?:'([^']*)'|\"([^\"]*)\"|(\S+))\s*(?:#.*)?$")
+
+
+def load_user_aliases() -> None:
+    """Load simple alias definitions from ~/.bash_aliases and ~/.bashrc if present."""
+    home = Path.home()
+    for rc_file in (home / ".bash_aliases", home / ".bashrc"):
+        try:
+            if not rc_file.is_file():
+                continue
+            for line in rc_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+                m = _ALIAS_LINE_RE.match(line)
+                if m:
+                    name = m.group(1)
+                    val = next((g for g in m.groups()[1:] if g is not None), "")
+                    if name and val:
+                        ALIASES[name] = val
+        except Exception:
+            continue
+
+
+load_user_aliases()
+
+
+def expand_alias(command_str: str) -> str:
+    """Expand a leading shell alias token into its target command."""
+    stripped = command_str.lstrip()
+    if not stripped:
+        return command_str
+    parts = stripped.split(maxsplit=1)
+    first = parts[0]
+    if first in ALIASES:
+        replacement = ALIASES[first]
+        return f"{replacement} {parts[1]}" if len(parts) > 1 else replacement
+    return command_str
 
 
 def parse_command_tokens(command_str: str) -> List[str]:
@@ -118,6 +161,43 @@ def handle_unset(args: List[str]) -> Tuple[int, str]:
     return 0, ""
 
 
+def handle_alias(args: List[str]) -> Tuple[int, str]:
+    """Execute alias builtin to list or define session aliases."""
+    if not args:
+        lines = [f"alias {k}='{v}'" for k, v in sorted(ALIASES.items())]
+        return 0, "\n".join(lines)
+
+    outputs: List[str] = []
+    for item in args:
+        if "=" in item:
+            name, val = item.split("=", 1)
+            name = name.strip()
+            if (val.startswith("'") and val.endswith("'")) or (val.startswith('"') and val.endswith('"')):
+                val = val[1:-1]
+            if name:
+                ALIASES[name] = val
+        else:
+            key = item.strip()
+            if key in ALIASES:
+                outputs.append(f"alias {key}='{ALIASES[key]}'")
+            else:
+                return 1, f"alias: {key}: not found"
+    return 0, "\n".join(outputs)
+
+
+def handle_unalias(args: List[str]) -> Tuple[int, str]:
+    """Execute unalias builtin to remove session aliases."""
+    if not args:
+        return 1, "unalias: usage: unalias name [name ...]"
+    for key in args:
+        k = key.strip()
+        if k == "-a":
+            ALIASES.clear()
+            return 0, ""
+        ALIASES.pop(k, None)
+    return 0, ""
+
+
 def try_execute_builtin(command_str: str) -> Optional[Tuple[int, str]]:
     """Attempt to intercept and execute a shell builtin.
 
@@ -138,6 +218,10 @@ def try_execute_builtin(command_str: str) -> Optional[Tuple[int, str]]:
         return handle_export(args)
     elif cmd == "unset":
         return handle_unset(args)
+    elif cmd == "alias":
+        return handle_alias(args)
+    elif cmd == "unalias":
+        return handle_unalias(args)
 
     return None
 

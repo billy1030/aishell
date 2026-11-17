@@ -53,6 +53,10 @@ class GeneralConfig(BaseModel):
         default_factory=lambda: ["hi", "hello", "hey", "please", "ais", "ai", "help"],
         description="Keywords/prefixes that wake the AI assistant in the REPL",
     )
+    auto_approve_safe: bool = Field(
+        default=False,
+        description="Automatically execute [SAFE] read-only commands without confirmation",
+    )
 
 
 class ExecutionConfig(BaseModel):

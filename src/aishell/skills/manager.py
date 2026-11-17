@@ -197,3 +197,83 @@ class SkillManager:
         except Exception:
             pass
 
+    def create_skill(self, name: str, description: str = "Custom AI skill") -> Path:
+        """Scaffold a starter SKILL.md inside user_skills_dir and reload skills."""
+        clean_name = re.sub(r"[^a-zA-Z0-9_-]", "-", name.strip()).strip("-") or "custom-skill"
+        skill_dir = self.user_skills_dir / clean_name
+        skill_dir.mkdir(parents=True, exist_ok=True)
+        skill_file = skill_dir / "SKILL.md"
+        if not skill_file.exists():
+            content = (
+                "---\n"
+                f"name: {clean_name}\n"
+                f"description: {description}\n"
+                f"triggers: [{clean_name}, {clean_name.replace('-', ' ')}]\n"
+                "---\n"
+                f"# {clean_name}\n\n"
+                "Describe step-by-step shell or MCP instructions for this skill.\n"
+            )
+            skill_file.write_text(content, encoding="utf-8")
+        self.reload()
+        return skill_file
+
+    def install_skill(self, spec: str) -> Skill:
+        """Install a SKILL.md from a URL, owner/repo, or owner/repo@skill spec."""
+        import urllib.request
+
+        spec_clean = spec.strip()
+        candidates: List[str] = []
+        fallback_name = "custom-skill"
+
+        if spec_clean.startswith(("http://", "https://")):
+            url = spec_clean
+            if "github.com/" in url and "/blob/" in url:
+                url = url.replace("https://github.com/", "https://raw.githubusercontent.com/", 1).replace("/blob/", "/", 1)
+            candidates = [url]
+            parts = [p for p in url.rstrip("/").split("/") if p]
+            if len(parts) >= 2 and parts[-1].lower() == "skill.md":
+                fallback_name = parts[-2]
+            elif parts:
+                fallback_name = Path(parts[-1]).stem
+        elif "@" in spec_clean and "/" in spec_clean:
+            repo_part, skill_part = spec_clean.split("@", 1)
+            repo_part = repo_part.strip("/")
+            skill_part = skill_part.strip()
+            fallback_name = skill_part
+            candidates = [
+                f"https://raw.githubusercontent.com/{repo_part}/main/skills/{skill_part}/SKILL.md",
+                f"https://raw.githubusercontent.com/{repo_part}/master/skills/{skill_part}/SKILL.md",
+                f"https://raw.githubusercontent.com/{repo_part}/main/{skill_part}/SKILL.md",
+            ]
+        elif "/" in spec_clean:
+            repo_part = spec_clean.strip("/")
+            fallback_name = repo_part.split("/")[-1]
+            candidates = [
+                f"https://raw.githubusercontent.com/{repo_part}/main/SKILL.md",
+                f"https://raw.githubusercontent.com/{repo_part}/master/SKILL.md",
+            ]
+        else:
+            raise ValueError("Use a direct SKILL.md URL, 'owner/repo', or 'owner/repo@skill'.")
+
+        raw_text: Optional[str] = None
+        last_err: Optional[Exception] = None
+        for url in candidates:
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": "aishell"})
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    raw_text = resp.read().decode("utf-8")
+                break
+            except Exception as exc:
+                last_err = exc
+
+        if raw_text is None:
+            raise RuntimeError(f"Could not download SKILL.md for '{spec_clean}': {last_err}")
+
+        skill = _parse_frontmatter(raw_text, fallback_name=fallback_name, source="user")
+        clean_dir = re.sub(r"[^a-zA-Z0-9_-]", "-", skill.name).strip("-") or "custom-skill"
+        target_dir = self.user_skills_dir / clean_dir
+        target_dir.mkdir(parents=True, exist_ok=True)
+        (target_dir / "SKILL.md").write_text(raw_text, encoding="utf-8")
+        self.reload()
+        return self.get_skill(skill.name) or skill
+
