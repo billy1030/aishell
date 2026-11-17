@@ -12,7 +12,7 @@ def test_get_risk_badge():
     assert "[SAFE]" in safe_badge.plain
 
     mutating_badge = get_risk_badge("mutating")
-    assert "[MUTATING]" in mutating_badge.plain
+    assert "[MODIFIES SYSTEM]" in mutating_badge.plain
 
     high_risk_badge = get_risk_badge("high_risk")
     assert "[HIGH-RISK]" in high_risk_badge.plain
@@ -55,7 +55,7 @@ def test_render_proposal_mutating():
     panel = render_proposal(proposal, console=console)
 
     rendered = output.getvalue()
-    assert "[MUTATING]" in rendered
+    assert "[MODIFIES SYSTEM]" in rendered
     assert "Create an empty file" in rendered
     assert "touch testfile.txt" in rendered
     assert panel.border_style == "yellow"

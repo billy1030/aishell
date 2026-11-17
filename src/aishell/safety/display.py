@@ -17,7 +17,7 @@ def get_risk_badge(risk_tier: str) -> Text:
     if norm == RiskLevel.SAFE.value:
         return Text.from_markup("[bold green][SAFE][/bold green]")
     elif norm == RiskLevel.MUTATING.value:
-        return Text.from_markup("[bold yellow][MUTATING][/bold yellow]")
+        return Text.from_markup("[bold yellow][MODIFIES SYSTEM][/bold yellow]")
     elif norm == RiskLevel.HIGH_RISK.value:
         return Text.from_markup("[bold white on red][HIGH-RISK][/bold white on red]")
     else:
