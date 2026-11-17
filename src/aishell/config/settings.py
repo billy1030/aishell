@@ -47,6 +47,7 @@ class GeneralConfig(BaseModel):
     default_provider: str = Field(default="ollama", description="Active AI provider")
     model: str = Field(default="qwen2.5-coder:7b", description="Model name or endpoint identifier")
     theme: str = Field(default="dark", description="Terminal theme: dark or light")
+    max_agent_steps: int = Field(default=6, description="Maximum autonomous agent loop steps per goal")
 
 
 class ExecutionConfig(BaseModel):

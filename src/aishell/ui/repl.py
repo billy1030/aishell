@@ -21,6 +21,7 @@ from aishell.diagnostics.engine import DiagnosticEngine
 from aishell.diagnostics.remediation import RemediationController
 from aishell.providers.base import BaseProvider
 from aishell.safety.gate import SafetyGate
+from aishell.skills.manager import SkillManager
 from aishell.ui.banner import format_prompt, get_prompt_style, render_banner
 from aishell.ui.history import SQLiteHistory
 from aishell.ui.renderer import RichStreamRenderer
@@ -42,6 +43,8 @@ class InteractiveREPL:
         provider_name: Optional[str] = None,
         model_name: Optional[str] = None,
         provider: Optional[BaseProvider] = None,
+        skill_manager: Optional[SkillManager] = None,
+        max_agent_steps: Optional[int] = None,
         pt_input=None,
         pt_output=None,
     ) -> None:
@@ -52,6 +55,13 @@ class InteractiveREPL:
         self.safety_gate = SafetyGate(console=self.console)
         self.renderer = RichStreamRenderer(console=self.console)
         self.executor_fn = executor_fn
+        self.skill_manager = skill_manager or SkillManager()
+        self.max_agent_steps = max(
+            1,
+            max_agent_steps
+            if max_agent_steps is not None
+            else getattr(self.settings.general, "max_agent_steps", 6),
+        )
 
         from aishell.providers.factory import get_provider
 
@@ -242,7 +252,30 @@ class InteractiveREPL:
             ctx_info = inspect_system_context(cwd=os.getcwd())
             render_context_table(ctx_info, console=self.console)
             return False
+        elif action in (":skills", "/skills", "skills"):
+            if arg and arg.lower() == "reload":
+                self.skill_manager.reload()
+                self.console.print("[green]Reloaded AI skills.[/green]")
+            self._print_skills_table()
+            return False
         return False
+
+    def _print_skills_table(self) -> None:
+        """Render all loaded AI skills in a formatted Rich table."""
+        from rich.table import Table
+
+        table = Table(title="Available AI Skills", border_style="cyan")
+        table.add_column("Skill", style="bold cyan")
+        table.add_column("Source", style="dim")
+        table.add_column("Description", style="white")
+
+        for skill in self.skill_manager.list_skills():
+            table.add_row(f"@{skill.name}", skill.source, skill.description)
+
+        self.console.print(table)
+        self.console.print(
+            f"[dim]Drop custom SKILL.md files into {self.skill_manager.user_skills_dir} and run ':skills reload'.[/dim]"
+        )
 
     def _print_help(self) -> None:
         """Print interactive REPL help guide."""
@@ -251,6 +284,7 @@ class InteractiveREPL:
             "• [bold green]Natural Language Query:[/bold green] Type your question or intent directly\n"
             "• [bold green]Direct Shell Command:[/bold green] Prefix with [bold yellow]![/bold yellow] or run standard builtins (`cd`, `export`)\n"
             "• [bold green]System Context:[/bold green] Type [bold yellow]/context[/bold yellow] to inspect host facts and sanitized environment\n"
+            "• [bold green]AI Skills:[/bold green] Type [bold yellow]/skills[/bold yellow] to list active skills or [bold yellow]/skills reload[/bold yellow] to refresh\n"
             "• [bold green]Switch Provider / Model:[/bold green] [bold yellow]/provider <name>[/bold yellow] or [bold yellow]/model <name>[/bold yellow]\n"
             "• [bold green]Multiline Input:[/bold green] Press [bold yellow]Alt+Enter[/bold yellow] or end line with trailing [bold yellow]\\[/bold yellow]\n"
             "• [bold green]History Search:[/bold green] Press [bold yellow]Ctrl+R[/bold yellow] to reverse search command history\n"
@@ -292,6 +326,9 @@ class InteractiveREPL:
             return ("shell", raw[1:].strip())
 
         # Explicit AI wake-up triggers
+        if raw.startswith("@"):
+            return ("ai", raw)
+
         ais_match = self._WAKE_PREFIX_RE.match(raw)
         if ais_match:
             query = ais_match.group(1).strip() or raw
@@ -340,7 +377,7 @@ class InteractiveREPL:
         if (
             raw.startswith(":")
             or raw.startswith("/")
-            or first_token in ("exit", "quit", "help", "clear", "provider", "model", "context")
+            or first_token in ("exit", "quit", "help", "clear", "provider", "model", "context", "skills")
         ):
             if self.handle_meta_command(raw):
                 raise EOFError()
@@ -358,78 +395,107 @@ class InteractiveREPL:
         try:
             import asyncio
             from aishell.context.inspector import inspect_system_context
+            from aishell.context.privacy import PrivacyGuard
             from aishell.context.sanitizer import format_system_observation
             from aishell.providers.errors import ProviderError
             from aishell.providers.prompts import SYSTEM_PROMPT_CHAT
+            from aishell.providers.schema import extract_proposal_from_text
 
             # Record user query in multi-turn conversation memory per D-04, CONF-03
             self.conversation.add_user_message(raw)
 
-            context_info = inspect_system_context(cwd=os.getcwd())
-            observation = format_system_observation(context_info)
-            system_instruction = f"{SYSTEM_PROMPT_CHAT}\n\n{observation}"
+            # Match active AI skills based on explicit mention or triggers
+            matched_skills = self.skill_manager.match_skills(raw)
+            skills_context = self.skill_manager.format_skills_context(matched_skills)
+            if matched_skills:
+                skill_names = ", ".join(f"@{s.name}" for s in matched_skills)
+                self.console.print(f"[dim]Active skills: {skill_names}[/dim]")
 
-            # Retrieve active multi-turn conversation history structured for LLM
-            messages = self.conversation.get_messages_for_llm(system_instruction)
+            # Autonomous agentic loop
+            last_proposed_cmd = None
+            last_exec = None
+            for step_idx in range(self.max_agent_steps):
+                context_info = inspect_system_context(cwd=os.getcwd())
+                observation = format_system_observation(context_info)
+                system_instruction = f"{SYSTEM_PROMPT_CHAT}\n\n{observation}"
+                if skills_context:
+                    system_instruction = f"{system_instruction}\n\n## Active Skills\n{skills_context}"
 
-            def _token_generator():
-                try:
-                    loop = asyncio.get_event_loop()
-                    if loop.is_closed():
+                messages = self.conversation.get_messages_for_llm(system_instruction)
+                accumulated_tokens = []
+
+                def _token_generator():
+                    try:
+                        loop = asyncio.get_event_loop()
+                        if loop.is_closed():
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                    except RuntimeError:
                         loop = asyncio.new_event_loop()
                         asyncio.set_event_loop(loop)
-                except RuntimeError:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
 
-                agen = self.provider.stream_chat(messages, system_prompt=system_instruction)
-                try:
-                    while True:
-                        try:
-                            token = loop.run_until_complete(agen.__anext__())
-                            accumulated_tokens.append(token)
-                            yield token
-                        except StopAsyncIteration:
-                            break
-                finally:
+                    agen = self.provider.stream_chat(messages, system_prompt=system_instruction)
                     try:
-                        loop.run_until_complete(agen.aclose())
-                    except Exception:
-                        pass
+                        while True:
+                            try:
+                                token = loop.run_until_complete(agen.__anext__())
+                                accumulated_tokens.append(token)
+                                yield token
+                            except StopAsyncIteration:
+                                break
+                    finally:
+                        try:
+                            loop.run_until_complete(agen.aclose())
+                        except Exception:
+                            pass
 
-            self.renderer.stream_markdown(_token_generator())
+                self.renderer.stream_markdown(_token_generator())
 
-            # Record assistant response in conversation memory
-            full_text = "".join(accumulated_tokens)
-            if full_text.strip():
-                self.conversation.add_assistant_message(full_text)
+                full_text = "".join(accumulated_tokens)
+                if full_text.strip():
+                    self.conversation.add_assistant_message(full_text)
+                accumulated_tokens = []
 
-            # Safety Gate: check if response proposed a shell command per EXEC-02, D-05
-            from aishell.providers.schema import extract_proposal_from_text
+                # Safety Gate: check if response proposed a shell command per EXEC-02, D-05
+                proposal = extract_proposal_from_text(full_text)
+                if not proposal or not proposal.command.strip():
+                    break
 
-            proposal = extract_proposal_from_text(full_text)
-            if proposal and proposal.command.strip():
+                # Guard against infinite loops where the provider repeats the exact same command
+                current_cmd = proposal.command.strip()
+                if step_idx > 0 and current_cmd == last_proposed_cmd and last_exec and last_exec[1] == 0:
+                    self.console.print("[dim]Agent proposed duplicate completed command. Stopping loop.[/dim]")
+                    break
+                last_proposed_cmd = current_cmd
+
                 approved_cmd = self.safety_gate.process_proposal(
                     proposal=proposal,
                     console=self.console,
                     prompt_session=self.session,
                 )
-                if approved_cmd:
-                    self._execute_with_remediation(approved_cmd)
-                    last_exec = getattr(self, "_last_execution", None)
-                    if last_exec:
-                        _, exec_code, exec_output = last_exec
-                        from aishell.context.privacy import PrivacyGuard
-                        redacted_out = PrivacyGuard.redact_credentials(exec_output or "")
-                        if len(redacted_out) > 4000:
-                            redacted_out = redacted_out[:4000] + "\n...[truncated]..."
-                        self.conversation.add_user_message(
-                            f'<command_output command="{approved_cmd}" exit_code="{exec_code}" untrusted="true">\n'
-                            f"{redacted_out}\n"
-                            "</command_output>"
-                        )
+                if not approved_cmd:
+                    self.console.print("[dim]Command cancelled by user. Agent loop stopped.[/dim]")
+                    break
+
+                self._execute_with_remediation(approved_cmd)
+                last_exec = getattr(self, "_last_execution", None)
+                if last_exec:
+                    _, exec_code, exec_output = last_exec
+                    redacted_out = PrivacyGuard.redact_credentials(exec_output or "")
+                    if len(redacted_out) > 4000:
+                        redacted_out = redacted_out[:4000] + "\n...[truncated]..."
+                    self.conversation.add_user_message(
+                        f'<command_output command="{approved_cmd}" exit_code="{exec_code}" untrusted="true">\n'
+                        f"{redacted_out}\n"
+                        "</command_output>"
+                    )
+                    if step_idx < self.max_agent_steps - 1:
                         self.console.print(
-                            f"[dim]✓ Command finished (exit {exec_code}). Output saved to AI context — type 'ais continue' or ask a follow-up.[/dim]"
+                            f"[dim]✓ Step {step_idx + 1}/{self.max_agent_steps} finished (exit {exec_code}). Continuing autonomously...[/dim]"
+                        )
+                    else:
+                        self.console.print(
+                            f"[yellow]Reached max agent steps ({self.max_agent_steps}). Type your next instruction to continue.[/yellow]"
                         )
 
         except KeyboardInterrupt:

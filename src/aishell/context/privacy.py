@@ -98,6 +98,11 @@ class PrivacyGuard:
         return result
 
     @classmethod
+    def redact(cls, text: str) -> str:
+        """Alias for redact_credentials for backwards compatibility and ease of use."""
+        return cls.redact_credentials(text)
+
+    @classmethod
     def sanitize_env_vars(cls, env: Dict[str, str]) -> Dict[str, str]:
         """Filter environment variables against allowlist and redact any credentials in values."""
         filtered = cls.filter_env(env)

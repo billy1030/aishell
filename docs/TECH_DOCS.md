@@ -53,6 +53,7 @@ src/aishell/
 ## 2. Input Routing & Execution Flow
 
 ### 2.1 Smart Input Classification (`InteractiveREPL._classify_input`)
+
 Inside the interactive REPL, user input is routed without waking the AI unnecessarily:
 
 1. **Meta Commands**: `:exit`, `:quit`, `:help`, `:clear`, `:context`, `/provider`, `/model` (and bare `exit`, `quit`, `help`, `clear`).
@@ -64,6 +65,7 @@ Inside the interactive REPL, user input is routed without waking the AI unnecess
 4. **Natural Language Fallback**: Multi-word questions (especially ending in `?`) route to the AI assistant.
 
 ### 2.2 AI Streaming & Multi-Step Context Capture
+
 1. `RichStreamRenderer.stream_markdown()` displays an animated `⠋ Thinking...` spinner via `rich.live.Live` until the first token arrives from the provider.
 2. `extract_proposal_from_text()` inspects the completed Markdown/JSON response for an executable shell command.
 3. If a command is found, `SafetyGate.process_proposal()` presents the Proposal Card and prompts:
@@ -77,25 +79,27 @@ Inside the interactive REPL, user input is routed without waking the AI unnecess
 
 ## 3. Defense-in-Depth Security Model
 
-| Layer | Component | Responsibility |
-|---|---|---|
-| **1. Human Gate** | `SafetyGate` | Mandatory `[y=run / N=cancel / e=edit]` confirmation before executing any AI-proposed command. Non-TTY stdin blocks execution automatically. |
-| **2. Risk Classification** | `classify_risk()` | Deterministic classification into `READ_ONLY` (green), `MUTATING` (yellow), and `HIGH_RISK` (red: `rm -rf`, `dd`, `mkfs`, `sudo`, pipe-to-shell). |
-| **3. Secret Redaction** | `PrivacyGuard` | Masks API keys (`sk-*`, `AIza*`), Bearer tokens, private keys, AWS credentials, and DB connection strings before LLM transmission. |
-| **4. Injection Containment** | `sanitizer.py` | Wraps host facts, environment observations, and command outputs in `<... untrusted="true">` XML delimiters. |
-| **5. Bounded Recovery** | `RemediationController` | Caps automatic error remediation loops to `MAX_REMEDIATION_CYCLES = 2` and ignores user `SIGINT` (exit code 130). |
+| Layer                        | Component               | Responsibility                                                                                                                                    |
+| ---------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1. Human Gate**            | `SafetyGate`            | Mandatory `[y=run / N=cancel / e=edit]` confirmation before executing any AI-proposed command. Non-TTY stdin blocks execution automatically.      |
+| **2. Risk Classification**   | `classify_risk()`       | Deterministic classification into `READ_ONLY` (green), `MUTATING` (yellow), and `HIGH_RISK` (red: `rm -rf`, `dd`, `mkfs`, `sudo`, pipe-to-shell). |
+| **3. Secret Redaction**      | `PrivacyGuard`          | Masks API keys (`sk-*`, `AIza*`), Bearer tokens, private keys, AWS credentials, and DB connection strings before LLM transmission.                |
+| **4. Injection Containment** | `sanitizer.py`          | Wraps host facts, environment observations, and command outputs in `<... untrusted="true">` XML delimiters.                                       |
+| **5. Bounded Recovery**      | `RemediationController` | Caps automatic error remediation loops to `MAX_REMEDIATION_CYCLES = 2` and ignores user `SIGINT` (exit code 130).                                 |
 
 ---
 
 ## 4. Multi-Provider Configuration & Precedence
 
 Configuration loads in strict priority order:
+
 1. CLI overrides (`-p/--provider`, `-m/--model`)
 2. Environment variables (`AISHELL_*`, `AISHELL_CONFIG_FILE`, `MINIMAX_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`)
 3. TOML config file (`~/.config/aishell/config.toml`)
 4. Pydantic defaults
 
 ### Custom & OpenAI-Compatible Providers
+
 `ProvidersConfig` uses `ConfigDict(extra="allow")` and universal fallback in `get_provider()`, enabling any provider name (e.g., `volcengine`, `minimax`, `deepseek`, `groq`, or custom names) to resolve via `OpenAIProvider` using `[providers.<name>]`, `<NAME>_API_KEY`/`<NAME>_BASE_URL`, or `[providers.openai]` fallback.
 
 ---
@@ -112,7 +116,7 @@ Configuration loads in strict priority order:
 ## 6. Testing
 
 The automated test suite verifies all modules across 185 unit and integration tests:
+
 ```bash
 uv run pytest
 ```
-
