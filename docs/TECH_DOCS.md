@@ -96,7 +96,7 @@ Configuration loads in strict priority order:
 4. Pydantic defaults
 
 ### Custom & OpenAI-Compatible Providers
-`ProvidersConfig` uses `extra="allow"`, enabling any custom provider section (e.g., `[providers.minimax]`, `[providers.deepseek]`, `[providers.groq]`) to resolve seamlessly through `OpenAIProvider` with its configured `base_url` and `api_key`.
+`ProvidersConfig` uses `ConfigDict(extra="allow")` and universal fallback in `get_provider()`, enabling any provider name (e.g., `volcengine`, `minimax`, `deepseek`, `groq`, or custom names) to resolve via `OpenAIProvider` using `[providers.<name>]`, `<NAME>_API_KEY`/`<NAME>_BASE_URL`, or `[providers.openai]` fallback.
 
 ---
 
@@ -111,7 +111,8 @@ Configuration loads in strict priority order:
 
 ## 6. Testing
 
-The automated test suite verifies all modules across 184 unit and integration tests:
+The automated test suite verifies all modules across 185 unit and integration tests:
 ```bash
 uv run pytest
 ```
+
