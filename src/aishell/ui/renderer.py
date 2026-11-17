@@ -11,7 +11,9 @@ from typing import Any, Dict, Generator, Iterable, Optional
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
+from rich.spinner import Spinner
 from rich.status import Status
+from rich.text import Text
 
 
 def detect_terminal_capabilities() -> Dict[str, Any]:
@@ -114,16 +116,20 @@ class RichStreamRenderer:
                 sys.stdout.flush()
             return accumulated_text
 
-        # Interactive streaming via Rich Live
+        # Interactive streaming via Rich Live: show Thinking spinner until first token arrives
         with Live(
-            Markdown("", code_theme=code_theme),
+            Spinner("dots", text="[dim cyan]Thinking...[/dim cyan]"),
             console=self.console,
             refresh_per_second=15,
             transient=False,
         ) as live:
-            for token in token_stream:
-                accumulated_text += token
-                live.update(Markdown(accumulated_text, code_theme=code_theme))
+            try:
+                for token in token_stream:
+                    accumulated_text += token
+                    live.update(Markdown(accumulated_text, code_theme=code_theme))
+            finally:
+                if not accumulated_text:
+                    live.update(Text(""))
 
         return accumulated_text
 
