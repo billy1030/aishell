@@ -57,12 +57,15 @@ def prompt_confirmation(
     render_proposal(proposal, console=c)
 
     # Step 3: Present interactive prompt
-    prompt_str = "Execute command? [y/N/e]: "
+    prompt_str = "Execute command? [y=run / N=cancel / e=edit]: "
     try:
         if input_fn is not None:
             user_response = input_fn(prompt_str)
         else:
-            c.print(f"[bold cyan]{prompt_str}[/bold cyan]", end="")
+            c.print(
+                "[bold cyan]Execute command?[/bold cyan] [bold white]\\[y=run / N=cancel / e=edit][/bold white]: ",
+                end="",
+            )
             user_response = input()
 
         clean_resp = user_response.strip().lower()
