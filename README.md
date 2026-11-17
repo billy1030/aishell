@@ -78,6 +78,20 @@ wsl aishell
 
 ---
 
+## REPL Commands & Triggers (`:` & `?`)
+
+- **`:` Meta Commands** (also works with `/`):
+  - `:help` — Show REPL shortcuts and commands
+  - `:skills` / `:findskills <query>` / `:skills install <spec>` / `:skills create <name>` / `:skills reload`
+  - `:mcp` / `:mcp reload` — List or reload MCP servers and tools
+  - `:autorun safe` / `:autorun off` — Toggle auto-running `[SAFE]` read-only commands
+  - `:history [N]` — Show last `N` commands (or press `Alt+H`)
+  - `:save file.md` / `:export script.sh` / `:resume` — Save, export, or restore your session
+  - `:context` / `:clear` / `:exit` (or `Ctrl+D` / `Ctrl+Z`)
+- **`?` Force AI Query**: Prefix with `?` (e.g. `? ls -la`) to ask the AI instead of running the command directly. You can also wake the AI with `@skill-name` or `ai_triggers` (`hi`, `please`, `ais`, `ai`, `help`).
+
+---
+
 ## Configuration
 
 `aishell` loads configuration with layered precedence:
