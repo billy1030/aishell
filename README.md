@@ -93,6 +93,25 @@ cp config.example.toml ~/.config/aishell/config.toml
 chmod 600 ~/.config/aishell/config.toml
 ```
 
+### Configuration Parameters
+
+| Section | Parameter | Default | Description |
+| --- | --- | --- | --- |
+| `[general]` | `default_provider` | `"ollama"` | Active AI provider (`minimax`, `openai`, `gemini`, `anthropic`, `ollama`, or custom) |
+| `[general]` | `model` | `"qwen2.5-coder:7b"` | Model name or endpoint identifier |
+| `[general]` | `theme` | `"dark"` | Terminal theme (`dark` or `light`) |
+| `[general]` | `max_agent_steps` | `100` | Maximum autonomous agent loop steps per goal |
+| `[general]` | `system_prompt` | `None` | Optional custom system prompt appended to assistant instructions |
+| `[general]` | `ai_triggers` | `["hi", "hello", "hey", "please", "ais", "ai", "help"]` | Keywords/prefixes that wake the AI assistant (plus `?` and `@skill`) |
+| `[general]` | `auto_approve_safe` | `false` | Automatically execute `[SAFE]` read-only commands without prompting |
+| `[execution]` | `timeout_seconds` | `300.0` | Process execution timeout in seconds |
+| `[execution]` | `max_output_buffer_kb` | `50` | Maximum in-memory output buffer (KB) |
+| `[execution]` | `ring_buffer_lines` | `1000` | Maximum in-memory output lines retained |
+| `[storage]` | `history_db_path` | `~/.local/state/aishell/history.db` | Path to SQLite command history database |
+| `[storage]` | `max_history_records` | `10000` | FIFO history retention limit |
+| `[providers.<name>]` | `api_key` | `None` | Provider API key or token |
+| `[providers.<name>]` | `base_url` | `None` | Custom OpenAI-compatible endpoint base URL |
+
 ### Configuration Examples
 
 #### 1. MiniMax (China & Global)
