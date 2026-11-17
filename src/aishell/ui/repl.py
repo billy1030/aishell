@@ -220,7 +220,12 @@ class InteractiveREPL:
             """Insert a newline buffer on Alt+Enter or Ctrl+J."""
             event.current_buffer.insert_text("\n")
 
-        from prompt_toolkit.filters import is_searching
+        from prompt_toolkit.filters import has_completions, is_searching
+
+        @kb.add("escape", filter=has_completions)
+        def _cancel_completion(event):
+            """Close the Tab completion menu on Escape."""
+            event.current_buffer.cancel_completion()
 
         @kb.add("enter", filter=~is_searching)
         def _handle_enter(event):
