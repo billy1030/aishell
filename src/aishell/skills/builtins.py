@@ -20,6 +20,25 @@ BUILTIN_SKILLS: List[Skill] = [
         ),
     ),
     Skill(
+        name="web-search",
+        description="Search the web from the terminal using curl and Python (DuckDuckGo Lite / Wikipedia).",
+        triggers=["search", "web search", "google", "duckduckgo", "look up", "find online", "search internet"],
+        source="builtin",
+        instructions=(
+            "When asked to search the internet or look up current information:\n"
+            "1. Propose a read-only command using `curl` and `python3` to query DuckDuckGo Lite (`https://lite.duckduckgo.com/lite/?q=<url_encoded_query>`) "
+            "and parse the top result titles, URLs, and snippets cleanly.\n"
+            "2. Example one-liner:\n"
+            "   `python3 -c \"import urllib.request, urllib.parse, re, html; q=urllib.parse.quote('YOUR QUERY'); "
+            "req=urllib.request.Request('https://lite.duckduckgo.com/lite/?q='+q, headers={'User-Agent':'Mozilla/5.0'}); "
+            "raw=urllib.request.urlopen(req, timeout=15).read().decode('utf-8','ignore'); "
+            "links=re.findall(r'<a[^>]+class=\\\"result-link\\\"[^>]+href=\\\"([^\\\"]+)\\\"[^>]*>(.*?)</a>', raw, re.S); "
+            "print('\\n'.join(f'{i+1}. {html.unescape(re.sub(r\\\"<[^>]+>\\\",\\\"\\\",t)).strip()} -> {u}' for i,(u,t) in enumerate(links[:8])))\"`\n"
+            "3. After receiving <command_output>, summarize the relevant findings or propose fetching a specific result URL if more detail is needed.\n"
+            "4. Never fabricate search results; only report what appears in <command_output>."
+        ),
+    ),
+    Skill(
         name="web-fetch",
         description="Fetch and extract readable content from URLs, APIs, or web pages via curl and Python.",
         triggers=["http://", "https://", "fetch", "url", "webpage", "search internet", "api"],
