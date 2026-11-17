@@ -19,6 +19,8 @@ from aishell.config.settings import AishellSettings, get_settings
 from aishell.conversation.manager import ConversationManager
 from aishell.diagnostics.engine import DiagnosticEngine
 from aishell.diagnostics.remediation import RemediationController
+from aishell.mcp.client import MCPManager
+from aishell.mcp.schema import extract_mcp_call_from_text
 from aishell.providers.base import BaseProvider
 from aishell.safety.gate import SafetyGate
 from aishell.skills.manager import SkillManager
@@ -31,8 +33,8 @@ class AishellCompleter(Completer):
     """Bash-style Tab completer for paths, meta commands, @skills, and shell commands."""
 
     _META_COMMANDS = (
-        ":exit", ":quit", ":help", ":clear", ":context", ":skills", ":skills reload", ":findskills",
-        "/exit", "/quit", "/help", "/clear", "/context", "/skills", "/skills reload", "/findskills",
+        ":exit", ":quit", ":help", ":clear", ":context", ":skills", ":skills reload", ":findskills", ":mcp", ":mcp reload",
+        "/exit", "/quit", "/help", "/clear", "/context", "/skills", "/skills reload", "/findskills", "/mcp", "/mcp reload",
         "/provider", "/model",
     )
 
@@ -88,6 +90,7 @@ class InteractiveREPL:
         model_name: Optional[str] = None,
         provider: Optional[BaseProvider] = None,
         skill_manager: Optional[SkillManager] = None,
+        mcp_manager: Optional[MCPManager] = None,
         max_agent_steps: Optional[int] = None,
         pt_input=None,
         pt_output=None,
@@ -100,6 +103,7 @@ class InteractiveREPL:
         self.renderer = RichStreamRenderer(console=self.console)
         self.executor_fn = executor_fn
         self.skill_manager = skill_manager or SkillManager()
+        self.mcp_manager = mcp_manager or MCPManager()
         self._session_approved_skills: set[str] = set()
         self.max_agent_steps = max(
             1,
@@ -307,7 +311,65 @@ class InteractiveREPL:
         elif action in (":findskills", "/findskills", "findskills"):
             self._print_skills_table(filter_query=arg)
             return False
+        elif action in (":mcp", "/mcp", "mcp"):
+            if arg and arg.lower() == "reload":
+                self.mcp_manager.reload_config()
+                self._discover_mcp_tools_sync()
+                self.console.print("[green]Reloaded MCP servers and tools.[/green]")
+            elif not self.mcp_manager.tools and self.mcp_manager.servers:
+                self._discover_mcp_tools_sync()
+            self._print_mcp_table()
+            return False
         return False
+
+    def _discover_mcp_tools_sync(self) -> None:
+        """Synchronously discover tools from configured MCP servers."""
+        import asyncio
+
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_closed():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        try:
+            loop.run_until_complete(self.mcp_manager.discover_tools())
+        except Exception as exc:
+            self.renderer.render_error(f"MCP discovery error: {exc}")
+
+    def _print_mcp_table(self) -> None:
+        """Render configured MCP servers and discovered tools."""
+        from rich.table import Table
+
+        if not self.mcp_manager.servers:
+            self.console.print(
+                f"[yellow]No MCP servers configured.[/yellow] Create [cyan]{self.mcp_manager.config_path}[/cyan] "
+                'with {"mcpServers": {...}} and run [bold]:mcp reload[/bold].'
+            )
+            return
+
+        table = Table(title="MCP Servers & Tools", border_style="cyan")
+        table.add_column("Server", style="bold cyan")
+        table.add_column("Tool", style="bold green")
+        table.add_column("Description", style="white")
+
+        tools_by_server = {}
+        for t in self.mcp_manager.tools:
+            tools_by_server.setdefault(t.server, []).append(t)
+
+        for name, cfg in self.mcp_manager.servers.items():
+            srv_tools = tools_by_server.get(name, [])
+            if not srv_tools:
+                status = "disabled" if not cfg.enabled else "no tools discovered"
+                table.add_row(name, f"[dim]({status})[/dim]", f"{cfg.command} {' '.join(cfg.args)}")
+            else:
+                for t in srv_tools:
+                    table.add_row(name, t.name, t.description[:80])
+
+        self.console.print(table)
 
     def _check_skill_approvals(self, matched_skills) -> bool:
         """Ask whether matched skills should auto-approve commands for this session or permanently."""
@@ -485,7 +547,7 @@ class InteractiveREPL:
         if (
             raw.startswith(":")
             or raw.startswith("/")
-            or first_token in ("exit", "quit", "help", "clear", "provider", "model", "context", "skills", "findskills")
+            or first_token in ("exit", "quit", "help", "clear", "provider", "model", "context", "skills", "findskills", "mcp")
         ):
             if self.handle_meta_command(raw):
                 raise EOFError()
@@ -534,6 +596,9 @@ class InteractiveREPL:
                     system_instruction = f"{system_instruction}\n\n## Custom System Prompt\n{custom_sys_prompt.strip()}"
                 if skills_context:
                     system_instruction = f"{system_instruction}\n\n## Active Skills\n{skills_context}"
+                mcp_context = self.mcp_manager.format_mcp_context()
+                if mcp_context:
+                    system_instruction = f"{system_instruction}\n\n## MCP Tools\n{mcp_context}"
 
                 messages = self.conversation.get_messages_for_llm(system_instruction)
                 accumulated_tokens = []
@@ -569,6 +634,52 @@ class InteractiveREPL:
                 if full_text.strip():
                     self.conversation.add_assistant_message(full_text)
                 accumulated_tokens = []
+
+                # Check for MCP tool call first if no shell command was proposed
+                mcp_call = extract_mcp_call_from_text(full_text)
+                if mcp_call and self.mcp_manager.servers:
+                    approved_mcp = self.safety_gate.auto_approve
+                    if not approved_mcp:
+                        try:
+                            self.console.print(
+                                f"[bold cyan]Execute MCP tool '{mcp_call.server}.{mcp_call.tool}'?[/bold cyan] "
+                                "[bold white]\\[y=run / a=all / N=cancel][/bold white]: ",
+                                end="",
+                            )
+                            ans = input().strip().lower()
+                        except (KeyboardInterrupt, EOFError):
+                            ans = "n"
+                        if ans in ("a", "all"):
+                            self.safety_gate.auto_approve = True
+                            approved_mcp = True
+                        elif ans in ("y", "yes"):
+                            approved_mcp = True
+
+                    if not approved_mcp:
+                        self.console.print("[dim]MCP tool cancelled by user. Agent loop stopped.[/dim]")
+                        break
+
+                    try:
+                        loop = asyncio.get_event_loop()
+                        mcp_out = loop.run_until_complete(
+                            self.mcp_manager.call_tool(mcp_call.server, mcp_call.tool, mcp_call.arguments)
+                        )
+                    except Exception as exc:
+                        mcp_out = f"MCP tool error: {exc}"
+
+                    redacted_mcp = PrivacyGuard.redact_credentials(mcp_out or "")
+                    if len(redacted_mcp) > 4000:
+                        redacted_mcp = redacted_mcp[:4000] + "\n...[truncated]..."
+                    self.conversation.add_user_message(
+                        f'<mcp_output server="{mcp_call.server}" tool="{mcp_call.tool}" untrusted="true">\n'
+                        f"{redacted_mcp}\n"
+                        "</mcp_output>"
+                    )
+                    if step_idx < self.max_agent_steps - 1:
+                        self.console.print(
+                            f"[dim]✓ Step {step_idx + 1}/{self.max_agent_steps} (MCP {mcp_call.server}.{mcp_call.tool}) finished. Continuing autonomously...[/dim]"
+                        )
+                    continue
 
                 # Safety Gate: check if response proposed a shell command per EXEC-02, D-05
                 proposal = extract_proposal_from_text(full_text)
@@ -643,6 +754,11 @@ class InteractiveREPL:
                 return
 
             if not loop.is_closed():
+                if hasattr(self, "mcp_manager"):
+                    try:
+                        loop.run_until_complete(self.mcp_manager.close_all())
+                    except Exception:
+                        pass
                 if hasattr(self, "provider") and hasattr(self.provider, "aclose"):
                     try:
                         loop.run_until_complete(self.provider.aclose())
