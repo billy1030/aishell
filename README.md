@@ -17,8 +17,13 @@ An interactive, system-aware Linux AI console assistant and REPL designed for de
 - **Model Context Protocol (MCP):**
   - Lightweight `stdio` MCP client reading `~/.config/aishell/mcp.json`. Use `:mcp` / `:mcp reload` to inspect and refresh connected servers and tools.
 - **Bash-Style Tab Autocompletion & Rich UI:**
-  - Press `Tab` to complete file/directory paths, `@skill-name`, `:skills` / `:mcp` / `/context` meta commands, and Linux shell commands (`Escape` closes the completion menu).
+  - Press `Tab` to complete file/directory paths, `@skill-name`, `:skills` / `:mcp` / `:autorun` / `:save` / `:export` / `:resume` / `/context` meta commands, aliases, and Linux shell commands (`Escape` closes the completion menu).
+  - Prompt displays current directory and Git branch/dirty status (`aishell:~/repo (main*) $ `).
   - `AI Assistant` bordered panel with condensed 2-line `<think>` streaming and `Ctrl+Z` / `Ctrl+D` / `:exit` clean exit.
+- **Shell Aliases, Autorun & Session Tools:**
+  - Built-in aliases (`ll`, `la`, `l`, `..`, `alias`, `unalias`) plus automatic import from `~/.bash_aliases` and `~/.bashrc`.
+  - Optional `auto_approve_safe = true` (or `:autorun safe|off`) to auto-run `[SAFE]` read-only commands while still gating `[MODIFIES SYSTEM]` and `[HIGH-RISK]`.
+  - `:skills install <url|owner/repo@skill>` and `:skills create <name>` to manage custom skills; `:save file.md`, `:export script.sh`, and `:resume` to export or restore sessions.
 - **Deterministic Safety Gate:** Commands are evaluated before execution and categorized by blast-radius:
   - `[READ_ONLY]` (Green) — Safe observation commands (`ls`, `ps`, `cat`).
   - `[MUTATING]` (Yellow) — State-changing commands (`mkdir`, `systemctl restart`).
