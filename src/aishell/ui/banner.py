@@ -80,6 +80,42 @@ def get_prompt_style() -> Style:
     )
 
 
+def get_git_commit() -> Optional[str]:
+    """Retrieve short git commit hash from local repo or installed package metadata."""
+    try:
+        import subprocess
+
+        repo_dir = Path(__file__).resolve().parents[3]
+        if (repo_dir / ".git").exists():
+            out = subprocess.check_output(
+                ["git", "rev-parse", "--short", "HEAD"],
+                cwd=str(repo_dir),
+                stderr=subprocess.DEVNULL,
+                text=True,
+                timeout=1,
+            ).strip()
+            if out:
+                return out
+    except Exception:
+        pass
+
+    try:
+        import json
+        from importlib.metadata import distribution
+
+        dist = distribution("aishell")
+        direct_url = dist.read_text("direct_url.json")
+        if direct_url:
+            data = json.loads(direct_url)
+            commit_id = data.get("vcs_info", {}).get("commit_id")
+            if commit_id:
+                return commit_id[:7]
+    except Exception:
+        pass
+
+    return None
+
+
 def get_system_summary() -> dict[str, str]:
     """Retrieve host system, python, and environment metadata."""
     distro_name = distro.name(pretty=True)
@@ -88,6 +124,7 @@ def get_system_summary() -> dict[str, str]:
 
     return {
         "version": __version__,
+        "commit": get_git_commit() or "",
         "os": distro_name,
         "python": platform.python_version(),
     }
@@ -108,7 +145,10 @@ def render_banner(
     table.add_column(style="dim cyan", justify="right")
     table.add_column(style="white")
 
-    table.add_row("Version:", f"[bold cyan]aishell[/bold cyan] v{sys_info['version']}")
+    version_str = f"[bold cyan]aishell[/bold cyan] v{sys_info['version']}"
+    if sys_info.get("commit"):
+        version_str += f" [dim]({sys_info['commit']})[/dim]"
+    table.add_row("Version:", version_str)
     table.add_row("System:", sys_info["os"])
     table.add_row("Python:", sys_info["python"])
     table.add_row("AI Model:", f"[bold green]{provider}[/bold green] / [bold yellow]{model}[/bold yellow]")
