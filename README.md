@@ -4,6 +4,8 @@
 
 An interactive, system-aware Linux AI console assistant and REPL designed for developers and sysadmins. It bridges natural language intent with Linux terminal operations by generating and explaining shell commands, gathering local system context, and safely running commands with mandatory human confirmation.
 
+> **Disclaimer:** This software is provided **for study and educational purposes only**, "as is", without warranty of any kind. The authors and contributors accept **no liability** for any damages, data loss, system changes, or unintended command executions. Always review AI-proposed commands carefully before approving execution.
+
 ![Terminal AI Shell Demo](docs/assets/demo-v2.jpg)
 
 ---
@@ -308,12 +310,6 @@ uv pip install -e ".[test]"
 # Run test suite (184 tests)
 uv run pytest
 ```
-
----
-
-## Disclaimer
-
-This software is provided **for study and educational purposes only**. It is provided "as is", without warranty of any kind, express or implied. The authors and contributors accept **no liability** for any damages, data loss, system changes, or unintended command executions resulting from the use of this tool. Always review AI-proposed commands carefully before approving execution.
 
 ---
 
