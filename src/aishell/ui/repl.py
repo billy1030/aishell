@@ -576,6 +576,9 @@ class InteractiveREPL:
         try:
             import asyncio
             import gc
+            import logging
+
+            logging.getLogger("asyncio").setLevel(logging.CRITICAL)
 
             try:
                 loop = asyncio.get_event_loop()
