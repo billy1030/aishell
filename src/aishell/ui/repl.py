@@ -164,7 +164,8 @@ class InteractiveREPL:
             output = f"Command exited with code {exit_code}"
 
         self._last_execution = (command, exit_code, output)
-        if exit_code != 0 and exit_code != 130:
+        first_cmd = command.strip().split()[0].lower() if command.strip() else ""
+        if exit_code != 0 and exit_code != 130 and first_cmd not in self._INTERACTIVE_NO_REMEDIATE:
             return self._trigger_remediation(command, exit_code, output)
         return exit_code
 
@@ -333,6 +334,11 @@ class InteractiveREPL:
             "• [bold green]Exit Session:[/bold green] Type [bold yellow]:exit[/bold yellow] or press [bold yellow]Ctrl+D[/bold yellow]"
         )
         self.console.print(Panel(content, border_style="cyan", expand=False))
+
+    _INTERACTIVE_NO_REMEDIATE = frozenset({
+        "bash", "sh", "zsh", "fish", "ssh", "tmux", "screen",
+        "vi", "vim", "nano", "less", "more", "man", "top", "htop", "btop",
+    })
 
     _DIRECT_SHELL_COMMANDS = frozenset({
         "bash", "sh", "zsh", "fish", "ssh", "scp", "rsync", "tmux", "screen",
