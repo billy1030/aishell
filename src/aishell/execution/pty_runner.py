@@ -134,7 +134,7 @@ def _run_posix_pty(
 
         # Polling loop for bidirectional PTY I/O streaming with timeout
         timed_out = False
-        sigint_count = 0
+        interrupted = False
         deadline = start_time + timeout
         watch_fds = [master_fd, stdin_fd] if forward_stdin else [master_fd]
 
@@ -156,15 +156,18 @@ def _run_posix_pty(
                     if user_data:
                         os.write(master_fd, user_data)
                         if b"\x03" in user_data:
-                            sigint_count += 1
+                            interrupted = True
                             try:
-                                if sigint_count >= 2:
-                                    os.killpg(child_pgid, signal.SIGKILL)
-                                    break
-                                else:
-                                    os.killpg(child_pgid, signal.SIGINT)
+                                os.killpg(child_pgid, signal.SIGINT)
                             except OSError:
                                 pass
+                            time.sleep(0.2)
+                            if proc.poll() is None:
+                                try:
+                                    os.killpg(child_pgid, signal.SIGKILL)
+                                except OSError:
+                                    pass
+                            break
                 except OSError:
                     forward_stdin = False
                     watch_fds = [master_fd]
