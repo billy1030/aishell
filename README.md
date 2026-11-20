@@ -152,7 +152,26 @@ chmod 600 ~/.config/aishell/config.toml
 
 ### Configuration Examples
 
-#### 1. MiniMax (China & Global)
+#### 1. Free Option: NVIDIA NIM (Primary or Fallback)
+NVIDIA NIM (`build.nvidia.com`) provides free developer API credits for many open models:
+```toml
+[general]
+default_provider = "nvidia"
+# Optional: also use as fallback_provider = "nvidia"
+llm_check_on_startup = true
+
+[providers.nvidia]
+base_url = "https://integrate.api.nvidia.com/v1"
+api_key = "nvapi-your-key-here"
+# Suggested free-tier models:
+#   "nvidia/nemotron-3.5-lightning-30b-a3b"
+#   "qwen/qwen2.5-coder-32b-instruct"
+#   "meta/llama-3.3-70b-instruct"
+#   "deepseek-ai/deepseek-r1"
+model = "nvidia/nemotron-3.5-lightning-30b-a3b"
+```
+
+#### 2. MiniMax (China & Global)
 ```toml
 [general]
 default_provider = "minimax"
