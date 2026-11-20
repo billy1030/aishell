@@ -148,6 +148,7 @@ chmod 600 ~/.config/aishell/config.toml
 | `[storage]` | `max_history_records` | `10000` | FIFO history retention limit |
 | `[providers.<name>]` | `api_key` | `None` | Provider API key or token |
 | `[providers.<name>]` | `base_url` | `None` | Custom OpenAI-compatible endpoint base URL |
+| `[providers.<name>]` | `model` | `None` | Default model for this provider (overrides `[general].model`) |
 
 ### Configuration Examples
 
