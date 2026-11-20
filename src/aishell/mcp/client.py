@@ -40,7 +40,7 @@ class MCPStdioClient:
             {
                 "protocolVersion": "2024-11-05",
                 "capabilities": {},
-                "clientInfo": {"name": "aishell", "version": "0.1.2"},
+                "clientInfo": {"name": "aishell", "version": "0.1.3"},
             },
         )
         await self._notify("notifications/initialized", {})

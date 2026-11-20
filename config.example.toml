@@ -61,24 +61,36 @@ max_history_records = 10000
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# 1. MiniMax (Use "minimax" in default_provider)
+# 1. MiniMax (Use "minimax" in default_provider or fallback_provider)
 # ------------------------------------------------------------------------------
 [providers.minimax]
 # For MiniMax China platform:
 base_url = "https://api.minimaxi.com/v1"
-
 # For MiniMax Global platform (platform.minimax.io):
 # base_url = "https://api.minimax.io/v1"
-
-# API Key (can also be passed via MINIMAX_API_KEY environment variable)
-api_key = "your-api-key-here"
+api_key = "your-minimax-api-key"
+model = "MiniMax-M3.1-Flash"
 
 # ------------------------------------------------------------------------------
-# 2. OpenAI & OpenAI-Compatible Endpoints (DeepSeek, Groq, vLLM, etc.)
+# 2. Volcengine / NVIDIA / Custom OpenAI-Compatible Sets
+# ------------------------------------------------------------------------------
+# [providers.volcengine]
+# base_url = "https://ark.cn-beijing.volces.com/api/v3"
+# api_key = "your-volcengine-api-key"
+# model = "deepseek-v4-1-flash-economy-261017"
+#
+# [providers.nvidia]
+# base_url = "https://integrate.api.nvidia.com/v1"
+# api_key = "your-nvidia-api-key"
+# model = "nvidia/nemotron-3.5-lightning-30b-a3b"
+
+# ------------------------------------------------------------------------------
+# 3. OpenAI & OpenAI-Compatible Endpoints (DeepSeek, Groq, vLLM, etc.)
 # ------------------------------------------------------------------------------
 [providers.openai]
 # API Key (can also be passed via OPENAI_API_KEY environment variable)
 api_key = "your-api-key-here"
+model = "gpt-4o"
 
 # ------------------------------------------------------------------------------
 # 2. Google Gemini
