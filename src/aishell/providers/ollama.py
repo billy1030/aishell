@@ -23,7 +23,25 @@ class OllamaProvider(BaseProvider):
         super().__init__(name="ollama", model=model)
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
-        self.client = AsyncOpenAI(base_url=self.base_url, api_key=self.api_key)
+        self._client: Optional[AsyncOpenAI] = None
+        self._client_loop = None
+
+    @property
+    def client(self) -> AsyncOpenAI:
+        import asyncio
+
+        try:
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            current_loop = None
+
+        if self._client is not None and self._client_loop is not current_loop:
+            self._client = None
+
+        if self._client is None:
+            self._client = AsyncOpenAI(base_url=self.base_url, api_key=self.api_key)
+            self._client_loop = current_loop
+        return self._client
 
     def validate_credentials(self) -> None:
         """Validate base_url is specified."""

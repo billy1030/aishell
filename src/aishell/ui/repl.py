@@ -161,6 +161,7 @@ class InteractiveREPL:
 
         self.last_interrupt_time: float = 0.0
         self.is_streaming: bool = False
+        self._async_loop = None
         self.kb = self._create_keybindings()
         self.completer = AishellCompleter(self.skill_manager, self._DIRECT_SHELL_COMMANDS)
 
@@ -457,18 +458,17 @@ class InteractiveREPL:
         )
         return True
 
-    def _run_startup_llm_check(self) -> None:
-        """Check primary LLM connection / warm up model, falling back if configured."""
+    def _get_async_loop(self):
+        """Return a dedicated, persistent event loop isolated from PromptSession."""
         import asyncio
 
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_closed():
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+        if self._async_loop is None or self._async_loop.is_closed():
+            self._async_loop = asyncio.new_event_loop()
+        return self._async_loop
+
+    def _run_startup_llm_check(self) -> None:
+        """Check primary LLM connection / warm up model, falling back if configured."""
+        loop = self._get_async_loop()
 
         with self.renderer.thinking_spinner(
             f"Checking LLM ({self.provider.name} / {self.provider.model})..."
@@ -505,16 +505,7 @@ class InteractiveREPL:
 
     def _discover_mcp_tools_sync(self) -> None:
         """Synchronously discover tools from configured MCP servers."""
-        import asyncio
-
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_closed():
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+        loop = self._get_async_loop()
 
         try:
             loop.run_until_complete(self.mcp_manager.discover_tools())
@@ -798,14 +789,7 @@ class InteractiveREPL:
                 accumulated_tokens = []
 
                 def _token_generator():
-                    try:
-                        loop = asyncio.get_event_loop()
-                        if loop.is_closed():
-                            loop = asyncio.new_event_loop()
-                            asyncio.set_event_loop(loop)
-                    except RuntimeError:
-                        loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(loop)
+                    loop = self._get_async_loop()
 
                     agen = self.provider.stream_chat(messages, system_prompt=system_instruction)
                     try:
@@ -861,7 +845,7 @@ class InteractiveREPL:
                         break
 
                     try:
-                        loop = asyncio.get_event_loop()
+                        loop = self._get_async_loop()
                         mcp_out = loop.run_until_complete(
                             self.mcp_manager.call_tool(mcp_call.server, mcp_call.tool, mcp_call.arguments)
                         )
@@ -951,9 +935,8 @@ class InteractiveREPL:
 
             logging.getLogger("asyncio").setLevel(logging.CRITICAL)
 
-            try:
-                loop = asyncio.get_event_loop()
-            except RuntimeError:
+            loop = self._async_loop
+            if loop is None:
                 return
 
             if not loop.is_closed():

@@ -41,11 +41,23 @@ class OpenAIProvider(BaseProvider):
             )
         self.base_url = base_url
         self._client: Optional[AsyncOpenAI] = None
+        self._client_loop = None
 
     def _get_client(self) -> AsyncOpenAI:
+        import asyncio
+
+        try:
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            current_loop = None
+
+        if self._client is not None and self._client_loop is not current_loop:
+            self._client = None
+
         if self._client is None:
             self.validate_credentials()
             self._client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
+            self._client_loop = current_loop
         return self._client
 
     @property
