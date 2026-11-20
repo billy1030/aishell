@@ -94,24 +94,24 @@ class OpenAIProvider(BaseProvider):
 
         except OpenAIAuthError as exc:
             raise AuthenticationError(
-                provider="openai",
-                message=f"OpenAI authentication failed: {exc}",
+                provider=self.name,
+                message=f"{self.name} authentication failed: {exc}",
             ) from exc
         except OpenAIRateLimitError as exc:
             raise RateLimitError(
-                provider="openai",
-                message=f"OpenAI rate limit or quota exceeded: {exc}",
+                provider=self.name,
+                message=f"{self.name} rate limit or quota exceeded: {exc}",
             ) from exc
         except (APIConnectionError, httpx.ConnectError) as exc:
             raise ConnectionError(
-                provider="openai",
+                provider=self.name,
                 url=self.base_url or "https://api.openai.com/v1",
-                message="Cannot connect to OpenAI API endpoint.",
+                message=f"Cannot connect to {self.name} API endpoint.",
             ) from exc
         except Exception as exc:
             raise ProviderError(
-                message=f"OpenAI error: {exc}",
-                guidance="Check your OpenAI API key and network connection.",
+                message=f"{self.name} error: {exc}",
+                guidance=f"Check your {self.name} API key, model, and base_url in ~/.config/aishell/config.toml.",
             ) from exc
 
     async def generate_proposal(
@@ -142,23 +142,23 @@ class OpenAIProvider(BaseProvider):
 
         except OpenAIAuthError as exc:
             raise AuthenticationError(
-                provider="openai",
-                message=f"OpenAI authentication failed: {exc}",
+                provider=self.name,
+                message=f"{self.name} authentication failed: {exc}",
             ) from exc
         except OpenAIRateLimitError as exc:
             raise RateLimitError(
-                provider="openai",
-                message=f"OpenAI rate limit or quota exceeded: {exc}",
+                provider=self.name,
+                message=f"{self.name} rate limit or quota exceeded: {exc}",
             ) from exc
         except (APIConnectionError, httpx.ConnectError) as exc:
             raise ConnectionError(
-                provider="openai",
+                provider=self.name,
                 url=self.base_url or "https://api.openai.com/v1",
-                message="Cannot connect to OpenAI API endpoint.",
+                message=f"Cannot connect to {self.name} API endpoint.",
             ) from exc
         except Exception as exc:
             raise ProviderError(
-                message=f"OpenAI proposal generation error: {exc}",
-                guidance="Check your OpenAI API key and network connection.",
+                message=f"{self.name} proposal generation error: {exc}",
+                guidance=f"Check your {self.name} API key, model, and base_url in ~/.config/aishell/config.toml.",
             ) from exc
 
