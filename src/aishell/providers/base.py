@@ -1,7 +1,9 @@
 """Abstract BaseProvider protocol and conversational message models."""
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, AsyncIterator, List, Literal, Optional
+import asyncio
+import time
+from typing import TYPE_CHECKING, AsyncIterator, List, Literal, Optional, Tuple
 from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
@@ -67,3 +69,37 @@ class BaseProvider(ABC):
             Validated CommandProposal instance.
         """
         pass
+
+    async def health_check(self, timeout: float = 8.0) -> Tuple[bool, str]:
+        """Verify credentials, endpoint reachability, and warm up the model.
+
+        Sends a minimal single-token ping and closes the stream immediately on first token.
+        """
+        start = time.perf_counter()
+        try:
+            self.validate_credentials()
+            ping_messages = [ChatMessage(role="user", content="ping")]
+
+            async def _ping() -> None:
+                agen = self.stream_chat(
+                    ping_messages,
+                    system_prompt="Reply with 'ok' only.",
+                )
+                try:
+                    async for token in agen:
+                        if token:
+                            break
+                finally:
+                    if hasattr(agen, "aclose"):
+                        try:
+                            await agen.aclose()
+                        except Exception:
+                            pass
+
+            await asyncio.wait_for(_ping(), timeout=timeout)
+            elapsed_ms = (time.perf_counter() - start) * 1000.0
+            return (True, f"{elapsed_ms:.0f}ms")
+        except asyncio.TimeoutError:
+            return (False, f"Timed out after {timeout:.0f}s")
+        except Exception as exc:
+            return (False, str(exc))

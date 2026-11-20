@@ -39,9 +39,11 @@ class AishellCompleter(Completer):
         ":exit", ":quit", ":help", ":clear", ":context", ":skills", ":skills reload",
         ":skills install", ":skills create", ":findskills", ":mcp", ":mcp reload",
         ":autorun", ":autorun safe", ":autorun off", ":save", ":export", ":resume",
+        ":history", ":check", ":warmup",
         "/exit", "/quit", "/help", "/clear", "/context", "/skills", "/skills reload",
         "/skills install", "/skills create", "/findskills", "/mcp", "/mcp reload",
         "/autorun", "/autorun safe", "/autorun off", "/save", "/export", "/resume",
+        "/history", "/check", "/warmup",
         "/provider", "/model",
     )
 
@@ -98,6 +100,7 @@ class InteractiveREPL:
         provider_name: Optional[str] = None,
         model_name: Optional[str] = None,
         provider: Optional[BaseProvider] = None,
+        fallback_provider: Optional[BaseProvider] = None,
         skill_manager: Optional[SkillManager] = None,
         mcp_manager: Optional[MCPManager] = None,
         max_agent_steps: Optional[int] = None,
@@ -139,6 +142,19 @@ class InteractiveREPL:
                 settings=self.settings,
                 validate=False,
             )
+
+        self.fallback_provider: Optional[BaseProvider] = fallback_provider
+        fb_name = getattr(self.settings.general, "fallback_provider", None)
+        if self.fallback_provider is None and fb_name:
+            try:
+                self.fallback_provider = get_provider(
+                    name=fb_name,
+                    model=getattr(self.settings.general, "fallback_model", None),
+                    settings=self.settings,
+                    validate=False,
+                )
+            except Exception:
+                self.fallback_provider = None
 
         self.conversation = ConversationManager()
         self.diagnostic_engine = DiagnosticEngine(provider=self.provider)
@@ -397,6 +413,9 @@ class InteractiveREPL:
                 limit = max(1, int(arg))
             self._print_recent_history(limit)
             return False
+        elif action in (":check", ":warmup", "/check", "/warmup", "check", "warmup"):
+            self._run_startup_llm_check()
+            return False
         elif action in (":mcp", "/mcp", "mcp"):
             if arg and arg.lower() == "reload":
                 self.mcp_manager.reload_config()
@@ -425,6 +444,64 @@ class InteractiveREPL:
         for idx, cmd in enumerate(recent, start=start_idx):
             table.add_row(str(idx), cmd)
         self.console.print(table)
+
+    def _switch_to_fallback(self, reason: str) -> bool:
+        """Switch active provider to fallback_provider if configured and distinct."""
+        if self.fallback_provider is None or self.fallback_provider is self.provider:
+            return False
+        prev = f"{self.provider.name}/{self.provider.model}"
+        self.provider = self.fallback_provider
+        self.diagnostic_engine._provider = self.provider
+        self.console.print(
+            f"[yellow]⚠ Primary LLM ({prev}) failed: {reason}[/yellow]\n"
+            f"[green]↪ Switched to fallback LLM:[/green] [bold]{self.provider.name} / {self.provider.model}[/bold]"
+        )
+        return True
+
+    def _run_startup_llm_check(self) -> None:
+        """Check primary LLM connection / warm up model, falling back if configured."""
+        import asyncio
+
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_closed():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        with self.renderer.thinking_spinner(
+            f"Checking LLM ({self.provider.name} / {self.provider.model})..."
+        ):
+            ok, detail = loop.run_until_complete(self.provider.health_check(timeout=8.0))
+
+        if ok:
+            self.console.print(
+                f"[green]✓ LLM ready:[/green] [dim]{self.provider.name} / {self.provider.model} ({detail})[/dim]"
+            )
+            return
+
+        self.console.print(
+            f"[yellow]⚠ Primary LLM check failed ({self.provider.name} / {self.provider.model}): {detail}[/yellow]"
+        )
+        if self.fallback_provider is not None and self.fallback_provider is not self.provider:
+            with self.renderer.thinking_spinner(
+                f"Checking fallback LLM ({self.fallback_provider.name} / {self.fallback_provider.model})..."
+            ):
+                fb_ok, fb_detail = loop.run_until_complete(
+                    self.fallback_provider.health_check(timeout=8.0)
+                )
+            if fb_ok:
+                self.provider = self.fallback_provider
+                self.diagnostic_engine._provider = self.provider
+                self.console.print(
+                    f"[green]✓ Switched to fallback LLM:[/green] [dim]{self.provider.name} / {self.provider.model} ({fb_detail})[/dim]"
+                )
+            else:
+                self.console.print(
+                    f"[red]✗ Fallback LLM check also failed ({self.fallback_provider.name} / {self.fallback_provider.model}): {fb_detail}[/red]"
+                )
 
     def _discover_mcp_tools_sync(self) -> None:
         """Synchronously discover tools from configured MCP servers."""
@@ -663,7 +740,7 @@ class InteractiveREPL:
             or raw.startswith("/")
             or first_token in (
                 "exit", "quit", "help", "clear", "provider", "model",
-                "context", "skills", "findskills", "mcp", "autorun", "save", "resume", "history",
+                "context", "skills", "findskills", "mcp", "autorun", "save", "resume", "history", "check", "warmup",
             )
         ):
             if self.handle_meta_command(raw):
@@ -745,7 +822,14 @@ class InteractiveREPL:
                         except Exception:
                             pass
 
-                self.renderer.stream_markdown(_token_generator())
+                try:
+                    self.renderer.stream_markdown(_token_generator())
+                except ProviderError as err:
+                    if not accumulated_tokens and self._switch_to_fallback(err.message):
+                        accumulated_tokens = []
+                        self.renderer.stream_markdown(_token_generator())
+                    else:
+                        raise
 
                 full_text = "".join(accumulated_tokens)
                 if full_text.strip():
@@ -883,6 +967,11 @@ class InteractiveREPL:
                         loop.run_until_complete(self.provider.aclose())
                     except Exception:
                         pass
+                if hasattr(self, "fallback_provider") and self.fallback_provider is not None and hasattr(self.fallback_provider, "aclose"):
+                    try:
+                        loop.run_until_complete(self.fallback_provider.aclose())
+                    except Exception:
+                        pass
 
                 gc.collect()
                 try:
@@ -913,6 +1002,8 @@ class InteractiveREPL:
     def run(self) -> None:
         """Run interactive REPL event loop."""
         render_banner(self.console, self.settings)
+        if getattr(self.settings.general, "llm_check_on_startup", True):
+            self._run_startup_llm_check()
 
         try:
             while True:

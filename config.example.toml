@@ -23,6 +23,13 @@ max_agent_steps = 100
 # Automatically run [SAFE] read-only AI-proposed commands without prompting
 # auto_approve_safe = false
 
+# Optional backup LLM if primary provider fails or is unreachable
+# fallback_provider = "ollama"
+# fallback_model = "qwen2.5-coder:7b"
+
+# Check and warm up LLM connection on startup
+# llm_check_on_startup = true
+
 # Model name or identifier
 # Examples:
 #   MiniMax:   "MiniMax-M3.1-Flash" or "MiniMax-Text-01"

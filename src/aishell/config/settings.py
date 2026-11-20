@@ -57,6 +57,18 @@ class GeneralConfig(BaseModel):
         default=False,
         description="Automatically execute [SAFE] read-only commands without confirmation",
     )
+    fallback_provider: Optional[str] = Field(
+        default=None,
+        description="Backup AI provider used if the primary provider fails or is unreachable",
+    )
+    fallback_model: Optional[str] = Field(
+        default=None,
+        description="Backup AI model used with fallback_provider",
+    )
+    llm_check_on_startup: bool = Field(
+        default=True,
+        description="Run an LLM connection check / warmup on REPL startup",
+    )
 
 
 class ExecutionConfig(BaseModel):
