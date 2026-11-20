@@ -89,6 +89,7 @@ wsl aishell
   - `:autorun safe` / `:autorun off` — Toggle auto-running `[SAFE]` read-only commands
   - `:history [N]` — Show last `N` commands (or press `Alt+H`)
   - `:save file.md` / `:export script.sh` / `:resume` — Save, export, or restore your session
+  - `:check` / `:warmup` — Run an LLM health check / model warmup (with automatic fallback if configured)
   - `:context` / `:clear` / `:exit` (or `Ctrl+D` / `Ctrl+Z`)
 - **`?` Force AI Query**: Prefix with `?` (e.g. `? ls -la`) to ask the AI instead of running the command directly. You can also wake the AI with `@skill-name` or `ai_triggers` (`hi`, `please`, `ais`, `ai`, `help`).
 
@@ -137,6 +138,9 @@ chmod 600 ~/.config/aishell/config.toml
 | `[general]` | `system_prompt` | `None` | Optional custom system prompt appended to assistant instructions |
 | `[general]` | `ai_triggers` | `["hi", "hello", "hey", "please", "ais", "ai", "help"]` | Keywords/prefixes that wake the AI assistant (plus `?` and `@skill`) |
 | `[general]` | `auto_approve_safe` | `false` | Automatically execute `[SAFE]` read-only commands without prompting |
+| `[general]` | `fallback_provider` | `None` | Backup AI provider used automatically if the primary provider fails |
+| `[general]` | `fallback_model` | `None` | Backup AI model used with `fallback_provider` |
+| `[general]` | `llm_check_on_startup` | `true` | Run an LLM connection check / warmup on REPL startup |
 | `[execution]` | `timeout_seconds` | `300.0` | Process execution timeout in seconds |
 | `[execution]` | `max_output_buffer_kb` | `50` | Maximum in-memory output buffer (KB) |
 | `[execution]` | `ring_buffer_lines` | `1000` | Maximum in-memory output lines retained |
