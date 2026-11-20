@@ -53,10 +53,13 @@ def get_provider(
     conf = settings or get_settings()
     provider_name = (name or conf.general.default_provider).strip().lower()
 
-    # Determine model: explicit arg > settings.general.model (if matching provider) > provider default
+    # Determine model: explicit arg > [providers.<name>].model > [general].model (if primary) > provider default
+    provider_cfg = conf.providers.get_provider_config(provider_name)
     target_model = model
     if not target_model:
-        if conf.general.default_provider.lower() == provider_name and conf.general.model:
+        if provider_cfg.model:
+            target_model = provider_cfg.model
+        elif conf.general.default_provider.lower() == provider_name and conf.general.model:
             target_model = conf.general.model
         else:
             target_model = _DEFAULT_MODELS.get(provider_name, "default")

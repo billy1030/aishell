@@ -135,10 +135,9 @@ class InteractiveREPL:
             self.provider = provider
         else:
             p_name = provider_name or self.settings.general.default_provider
-            m_name = model_name or self.settings.general.model
             self.provider = get_provider(
                 name=p_name,
-                model=m_name,
+                model=model_name,
                 settings=self.settings,
                 validate=False,
             )

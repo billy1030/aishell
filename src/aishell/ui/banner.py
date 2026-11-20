@@ -179,7 +179,8 @@ def render_banner(
     sys_info = get_system_summary()
 
     provider = st.general.default_provider
-    model = st.general.model
+    provider_cfg = st.providers.get_provider_config(provider)
+    model = provider_cfg.model or st.general.model
 
     table = Table.grid(padding=(0, 2))
     table.add_column(style="dim cyan", justify="right")
@@ -197,7 +198,8 @@ def render_banner(
         f"[bold green]{provider}[/bold green] / [bold yellow]{model}[/bold yellow] [dim](primary)[/dim]",
     )
     if st.general.fallback_provider:
-        fb_model = st.general.fallback_model or "default"
+        fb_cfg = st.providers.get_provider_config(st.general.fallback_provider)
+        fb_model = st.general.fallback_model or fb_cfg.model or "default"
         table.add_row("Fallback:", f"[cyan]{st.general.fallback_provider}[/cyan] / [dim]{fb_model}[/dim]")
     else:
         table.add_row("Fallback:", "[dim]not configured[/dim]")

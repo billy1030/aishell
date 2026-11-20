@@ -96,6 +96,7 @@ class ProviderConfig(BaseModel):
 
     api_key: Optional[str] = Field(default=None, description="API key or token")
     base_url: Optional[str] = Field(default=None, description="Custom endpoint base URL")
+    model: Optional[str] = Field(default=None, description="Default model for this provider")
 
 
 class ProvidersConfig(BaseModel):
