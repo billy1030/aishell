@@ -477,8 +477,9 @@ class InteractiveREPL:
             ok, detail = loop.run_until_complete(self.provider.health_check(timeout=8.0))
 
         if ok:
+            role_label = "fallback" if self.provider is self.fallback_provider else "primary"
             self.console.print(
-                f"[green]✓ LLM ready:[/green] [dim]{self.provider.name} / {self.provider.model} ({detail})[/dim]"
+                f"[green]✓ LLM ready ({role_label}):[/green] [dim]{self.provider.name} / {self.provider.model} ({detail})[/dim]"
             )
             return
 

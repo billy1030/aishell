@@ -192,10 +192,15 @@ def render_banner(
     table.add_row("Repo:", "[dim]https://github.com/billy1030/aishell[/dim]")
     table.add_row("System:", sys_info["os"])
     table.add_row("Python:", sys_info["python"])
-    table.add_row("AI Model:", f"[bold green]{provider}[/bold green] / [bold yellow]{model}[/bold yellow]")
+    table.add_row(
+        "AI Model:",
+        f"[bold green]{provider}[/bold green] / [bold yellow]{model}[/bold yellow] [dim](primary)[/dim]",
+    )
     if st.general.fallback_provider:
         fb_model = st.general.fallback_model or "default"
-        table.add_row("Fallback:", f"[dim]{st.general.fallback_provider} / {fb_model}[/dim]")
+        table.add_row("Fallback:", f"[cyan]{st.general.fallback_provider}[/cyan] / [dim]{fb_model}[/dim]")
+    else:
+        table.add_row("Fallback:", "[dim]not configured[/dim]")
     table.add_row("Shortcuts:", "[dim]Alt+Enter (newline) • Ctrl+R (history) • :exit or Ctrl+D (quit)[/dim]")
 
     panel = Panel(
