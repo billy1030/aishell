@@ -746,6 +746,7 @@ class InteractiveREPL:
         # Natural language query - Stream tokens from active AI provider
         raw = payload
         self.safety_gate.reset_auto_approve()
+        prev_auto_approve_safe = self.safety_gate.auto_approve_safe
         self.is_streaming = True
         accumulated_tokens = []
         try:
@@ -767,7 +768,11 @@ class InteractiveREPL:
                 skill_names = ", ".join(f"@{s.name}" for s in matched_skills)
                 self.console.print(f"[dim]Active skills: {skill_names}[/dim]")
                 if self._check_skill_approvals(matched_skills):
-                    self.safety_gate.auto_approve = True
+                    preapproved = self.skill_manager.DEFAULT_PREAPPROVED_SKILLS
+                    if all(s.name.lower() in preapproved for s in matched_skills):
+                        self.safety_gate.auto_approve_safe = True
+                    else:
+                        self.safety_gate.auto_approve = True
 
             # Autonomous agentic loop
             last_proposed_cmd = None
@@ -923,6 +928,7 @@ class InteractiveREPL:
             self.renderer.render_error(f"Generation error: {exc}")
         finally:
             self.is_streaming = False
+            self.safety_gate.auto_approve_safe = prev_auto_approve_safe
             if self.conversation.messages:
                 self.conversation.save_to_file(self._conversation_state_path)
 

@@ -7,7 +7,7 @@ BUILTIN_SKILLS: List[Skill] = [
     Skill(
         name="repo-study",
         description="Clone and analyze GitHub repositories or local codebases step-by-step.",
-        triggers=["github.com", "study", "analyze repo", "repository", "codebase", "clone"],
+        triggers=["github.com", "gitlab.com", "study repo", "analyze repo", "repository", "codebase", "clone"],
         source="builtin",
         instructions=(
             "When asked to study or analyze a GitHub repository or local codebase:\n"
@@ -45,9 +45,10 @@ BUILTIN_SKILLS: List[Skill] = [
         source="builtin",
         instructions=(
             "When asked to retrieve information from a specific URL or web API:\n"
-            "1. Use `curl -fsSL -m 15 <url>` (and pipe through `python3` to strip HTML tags or format JSON if needed).\n"
-            "2. For GitHub repositories, prefer GitHub REST API (`https://api.github.com/repos/<owner>/<repo>`) or `raw.githubusercontent.com`.\n"
-            "3. Never fabricate URL contents; only summarize what appears in <command_output>."
+            "1. Start by fetching the exact URL the user provided using `curl -fsSL -m 15 <url>`.\n"
+            "2. When stripping HTML in Python, remove `<script>`, `<style>`, `<nav>`, `<header>`, `<footer>`, and `<aside>` first (and prefer `<main>` or `<article>` if present) so navigation sidebars don't waste output.\n"
+            "3. For GitHub repositories, prefer GitHub REST API (`https://api.github.com/repos/<owner>/<repo>`) or `raw.githubusercontent.com`.\n"
+            "4. Never fabricate URL contents; only summarize what appears in <command_output>."
         ),
     ),
     Skill(
