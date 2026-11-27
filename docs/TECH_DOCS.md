@@ -47,13 +47,15 @@ src/aishell/
 │   ├── __init__.py         # Public exports for Skill and SkillManager
 │   ├── builtins.py         # Built-in Linux/DevOps skills (repo-study, web-search, web-fetch, etc.)
 │   ├── manager.py          # Hierarchical SKILL.md discovery (project > user > builtin) & matching
-│   └── schema.py           # Pydantic Skill model (name, description, instructions, triggers)
+│   ├── schema.py           # Pydantic Skill model (name, description, instructions, triggers)
+│   └── web_fetch.py        # Native <fetch_url> clean HTML-to-text web reader
 ├── storage/
 │   └── history.py          # ACID SQLite command audit log (~/.local/state/aishell/history.db)
 └── ui/
-    ├── banner.py           # Startup system banner (with version & commit ID) & clean UNIX prompt
+    ├── banner.py           # Startup system banner (with version & commit ID) & Git-aware prompt
     ├── history.py          # PromptToolkit SQLite-backed reverse search history (Ctrl+R)
-    ├── renderer.py         # Rich Live Markdown streamer with 'Thinking...' spinner
+    ├── plan.py             # Live <plan> checklist parser and Execution Plan Rich Panel
+    ├── renderer.py         # Rich Live Markdown streamer with 'Thinking...' spinner & AI Panel
     └── repl.py             # InteractiveREPL event loop, autonomous agentic loop, & async cleanup
 ```
 

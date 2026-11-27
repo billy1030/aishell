@@ -15,7 +15,7 @@ An interactive, system-aware Linux AI console assistant and REPL designed for de
 - **Managed Pseudo-Terminal (PTY):** Real-time command execution with full terminal fidelity, ANSI escape sequence handling, and interactive process management.
 - **State Synchronization:** Eliminates subshell amnesia by synchronizing directory changes (`cd`) and environment variable operations (`export`, `unset`) in the parent session.
 - **Autonomous Agentic Loop & AI Skills:**
-  - Multi-step autonomous execution up to `max_agent_steps` (default `100`): `aishell` runs an approved command or MCP tool, ingests `<command_output>` / `<mcp_output>`, and continues reasoning until the task is complete.
+  - Multi-step autonomous execution up to `max_agent_steps` (default `100`): `aishell` displays a live **Execution Plan** checklist (`<plan>`), runs approved commands, MCP tools, or native `<fetch_url>` web reads, ingests `<command_output>` / `<mcp_output>` / `<web_content>`, and prints turn telemetry (`provider/model • steps • elapsed`).
   - Hierarchical AI Skills (`project` > `user` > `builtin`) with built-in `@repo-study`, `@web-search`, `@web-fetch`, `@find-skills`, `@systemd-triage`, `@docker-debug`, and `@network-audit`. Use `:skills`, `:findskills <query>`, or `:skills reload` to manage skills.
   - Pre-approved read-only skills (`@web-search`, `@web-fetch`) and interactive session/permanent skill auto-approval (`[y=this session / p=permanent / N=ask each time]`).
 - **Model Context Protocol (MCP):**
@@ -87,7 +87,8 @@ wsl aishell
   - `:skills` / `:findskills <query>` / `:skills install <spec>` / `:skills create <name>` / `:skills reload`
   - `:mcp` / `:mcp reload` — List or reload MCP servers and tools
   - `:autorun safe` / `:autorun off` — Toggle auto-running `[SAFE]` read-only commands
-  - `:history [N]` — Show last `N` commands (or press `Alt+H`)
+  - `:history [N]` — Show last `N` commands (or press `Alt+H`); type `!N` (e.g. `!15`) to re-run entry `#N`
+  - `:plan` / `:plan clear` — View or reset the live AI **Execution Plan** checklist
   - `:save file.md` / `:export script.sh` / `:resume` — Save, export, or restore your session
   - `:check` / `:warmup` — Run an LLM health check / model warmup (with automatic fallback if configured)
   - `:context` / `:clear` / `:exit` (or `Ctrl+D` / `Ctrl+Z`)
