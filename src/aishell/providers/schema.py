@@ -50,8 +50,8 @@ def _extract_json_block(text: str) -> Optional[str]:
 
 
 def _extract_bash_block(text: str) -> Optional[str]:
-    """Extract code inside ```bash or ```sh code block."""
-    match = re.search(r"```(?:bash|sh|zsh)?\s*\n([\s\S]*?)\n```", text, re.IGNORECASE)
+    """Extract code inside explicit ```bash, ```sh, ```zsh, or ```shell code block."""
+    match = re.search(r"```(?:bash|sh|zsh|shell)\s*\n([\s\S]*?)\n```", text, re.IGNORECASE)
     if match:
         cmd = match.group(1).strip()
         if cmd:
@@ -81,18 +81,22 @@ def extract_proposal_from_text(raw_text: str) -> Optional[CommandProposal]:
     # Step 2: Attempt fallback markdown bash code fence extraction
     bash_candidate = _extract_bash_block(clean_text)
     if bash_candidate and bash_candidate.strip():
+        from aishell.safety.classifier import classify_risk
+
+        cmd_clean = bash_candidate.strip()
         lines = [
             line.strip()
             for line in clean_text.splitlines()
             if line.strip() and not line.strip().startswith("```") and not line.strip().startswith("#")
         ]
         purpose = lines[0] if lines else "Execute proposed command"
-        requires_sudo = bash_candidate.startswith("sudo ")
+        requires_sudo = cmd_clean.startswith("sudo ")
+        inferred_risk = classify_risk(cmd_clean).value
         return CommandProposal(
-            command=bash_candidate.strip(),
+            command=cmd_clean,
             purpose=purpose,
             explanation="Extracted from markdown code block",
-            risk_tier="mutating",
+            risk_tier=inferred_risk,
             requires_sudo=requires_sudo,
         )
 

@@ -80,7 +80,7 @@ This uses socket statistics to list all listening TCP and UDP sockets with proce
     prop = parse_proposal_from_text(raw)
     assert prop.command == "ss -tulpn"
     assert "open ports" in prop.purpose.lower()
-    assert prop.risk_tier == "mutating"  # safe default for unstructured fallback
+    assert prop.risk_tier == "safe"  # ss -tulpn is classified as read-only safe
     assert prop.requires_sudo is False
 
 

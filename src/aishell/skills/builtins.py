@@ -45,10 +45,9 @@ BUILTIN_SKILLS: List[Skill] = [
         source="builtin",
         instructions=(
             "When asked to retrieve information from a specific URL or web API:\n"
-            "1. Start by fetching the exact URL the user provided using `curl -fsSL -m 15 <url>`.\n"
-            "2. When stripping HTML in Python, remove `<script>`, `<style>`, `<nav>`, `<header>`, `<footer>`, and `<aside>` first (and prefer `<main>` or `<article>` if present) so navigation sidebars don't waste output.\n"
-            "3. For GitHub repositories, prefer GitHub REST API (`https://api.github.com/repos/<owner>/<repo>`) or `raw.githubusercontent.com`.\n"
-            "4. Never fabricate URL contents; only summarize what appears in <command_output>."
+            "1. Prefer the built-in `<fetch_url>https://exact-url-here</fetch_url>` tag to read web pages cleanly in 1 step (aishell automatically strips scripts, styles, and navigation sidebars).\n"
+            "2. For JSON APIs (e.g., GitHub REST API `https://api.github.com/repos/<owner>/<repo>`), `<fetch_url>` or `curl -fsSL -m 15 <url>` both work.\n"
+            "3. Never fabricate URL contents; only summarize what appears in <web_content> or <command_output>."
         ),
     ),
     Skill(

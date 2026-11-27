@@ -27,8 +27,10 @@ from aishell.mcp.schema import extract_mcp_call_from_text
 from aishell.providers.base import BaseProvider
 from aishell.safety.gate import SafetyGate
 from aishell.skills.manager import SkillManager
+from aishell.skills.web_fetch import extract_fetch_url_from_text, fetch_url_clean
 from aishell.ui.banner import format_prompt, get_prompt_style, render_banner
 from aishell.ui.history import SQLiteHistory
+from aishell.ui.plan import ExecutionPlan
 from aishell.ui.renderer import RichStreamRenderer
 
 
@@ -39,11 +41,11 @@ class AishellCompleter(Completer):
         ":exit", ":quit", ":help", ":clear", ":context", ":skills", ":skills reload",
         ":skills install", ":skills create", ":findskills", ":mcp", ":mcp reload",
         ":autorun", ":autorun safe", ":autorun off", ":save", ":export", ":resume",
-        ":history", ":check", ":warmup",
+        ":history", ":check", ":warmup", ":plan", ":plan clear",
         "/exit", "/quit", "/help", "/clear", "/context", "/skills", "/skills reload",
         "/skills install", "/skills create", "/findskills", "/mcp", "/mcp reload",
         "/autorun", "/autorun safe", "/autorun off", "/save", "/export", "/resume",
-        "/history", "/check", "/warmup",
+        "/history", "/check", "/warmup", "/plan", "/plan clear",
         "/provider", "/model",
     )
 
@@ -156,6 +158,7 @@ class InteractiveREPL:
                 self.fallback_provider = None
 
         self.conversation = ConversationManager()
+        self.execution_plan = ExecutionPlan()
         self.diagnostic_engine = DiagnosticEngine(provider=self.provider)
         self.remediation_controller = RemediationController()
 
@@ -415,6 +418,13 @@ class InteractiveREPL:
             return False
         elif action in (":check", ":warmup", "/check", "/warmup", "check", "warmup"):
             self._run_startup_llm_check()
+            return False
+        elif action in (":plan", "/plan", "plan"):
+            if arg and arg.lower() == "clear":
+                self.execution_plan.clear()
+                self.console.print("[dim]Cleared execution plan.[/dim]")
+            else:
+                self.execution_plan.render(self.console)
             return False
         elif action in (":mcp", "/mcp", "mcp"):
             if arg and arg.lower() == "reload":
@@ -724,6 +734,19 @@ class InteractiveREPL:
         if not raw:
             return
 
+        # Re-run history item by 1-based index (!N)
+        hist_match = re.fullmatch(r"!(\d+)", raw)
+        if hist_match:
+            idx = int(hist_match.group(1))
+            entries = self.history.get_strings()
+            if 1 <= idx <= len(entries):
+                target_cmd = entries[idx - 1]
+                self.console.print(f"[dim]↻ Re-running #{idx}: {target_cmd}[/dim]")
+                self.dispatch_input(target_cmd)
+            else:
+                self.console.print(f"[yellow]History entry #{idx} not found (1..{len(entries)} available).[/yellow]")
+            return
+
         # Check for meta commands first
         first_token = raw.split()[0].lower()
         if (
@@ -731,7 +754,7 @@ class InteractiveREPL:
             or raw.startswith("/")
             or first_token in (
                 "exit", "quit", "help", "clear", "provider", "model",
-                "context", "skills", "findskills", "mcp", "autorun", "save", "resume", "history", "check", "warmup",
+                "context", "skills", "findskills", "mcp", "autorun", "save", "resume", "history", "check", "warmup", "plan",
             )
         ):
             if self.handle_meta_command(raw):
@@ -775,6 +798,8 @@ class InteractiveREPL:
                         self.safety_gate.auto_approve = True
 
             # Autonomous agentic loop
+            turn_start = time.perf_counter()
+            steps_taken = 0
             last_proposed_cmd = None
             last_exec = None
             for step_idx in range(self.max_agent_steps):
@@ -824,6 +849,53 @@ class InteractiveREPL:
                 if full_text.strip():
                     self.conversation.add_assistant_message(full_text)
                 accumulated_tokens = []
+                steps_taken += 1
+
+                # Parse and render live <plan> checklist if emitted
+                if self.execution_plan.update_from_text(full_text):
+                    self.execution_plan.render(self.console)
+
+                # Native read-only <fetch_url> tool
+                fetch_target = extract_fetch_url_from_text(full_text)
+                if fetch_target:
+                    approved_fetch = self.safety_gate.auto_approve or self.safety_gate.auto_approve_safe
+                    if not approved_fetch:
+                        try:
+                            self.console.print(
+                                f"[bold cyan]Fetch URL '{fetch_target}'?[/bold cyan] "
+                                "[bold white]\\[y=fetch / a=all / N=cancel][/bold white]: ",
+                                end="",
+                            )
+                            ans = input().strip().lower()
+                        except (KeyboardInterrupt, EOFError):
+                            ans = "n"
+                        if ans in ("a", "all"):
+                            self.safety_gate.auto_approve = True
+                            approved_fetch = True
+                        elif ans in ("y", "yes"):
+                            approved_fetch = True
+
+                    if not approved_fetch:
+                        self.console.print("[dim]URL fetch cancelled by user. Agent loop stopped.[/dim]")
+                        break
+
+                    try:
+                        with self.renderer.thinking_spinner(f"Fetching {fetch_target}..."):
+                            page_text = fetch_url_clean(fetch_target)
+                    except Exception as exc:
+                        page_text = f"Fetch error: {exc}"
+
+                    redacted_page = PrivacyGuard.redact_credentials(page_text or "")
+                    self.conversation.add_user_message(
+                        f'<web_content url="{fetch_target}" untrusted="true">\n'
+                        f"{redacted_page}\n"
+                        "</web_content>"
+                    )
+                    if step_idx < self.max_agent_steps - 1:
+                        self.console.print(
+                            f"[dim]✓ Step {step_idx + 1}/{self.max_agent_steps} (fetch_url) finished. Continuing autonomously...[/dim]"
+                        )
+                    continue
 
                 # Check for MCP tool call first if no shell command was proposed
                 mcp_call = extract_mcp_call_from_text(full_text)
@@ -912,6 +984,13 @@ class InteractiveREPL:
                         self.console.print(
                             f"[yellow]Reached max agent steps ({self.max_agent_steps}). Type your next instruction to continue.[/yellow]"
                         )
+
+            if steps_taken > 0:
+                elapsed = time.perf_counter() - turn_start
+                step_word = "step" if steps_taken == 1 else "steps"
+                self.console.print(
+                    f"[dim]✓ {self.provider.name}/{self.provider.model} • {steps_taken} {step_word} • {elapsed:.1f}s[/dim]"
+                )
 
         except KeyboardInterrupt:
             # If tokens were streamed before interruption, save partial response in memory

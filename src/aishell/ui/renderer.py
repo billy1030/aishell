@@ -51,12 +51,15 @@ def detect_terminal_capabilities() -> Dict[str, Any]:
 
 
 def _condense_thinking(text: str) -> str:
-    """Condense <think>...</think> blocks to at most 2 lines while streaming, and hide once complete."""
-    if "<think>" not in text:
-        return text
+    """Condense <think>...</think> blocks to 2 lines while streaming, hide once complete, and strip <plan> XML."""
+    from aishell.ui.plan import strip_plan_blocks
+
+    cleaned = strip_plan_blocks(text)
+    if "<think>" not in cleaned:
+        return cleaned
 
     # Strip any completed <think>...</think> blocks
-    cleaned = re.sub(r"<think>[\s\S]*?</think>\s*", "", text)
+    cleaned = re.sub(r"<think>[\s\S]*?</think>\s*", "", cleaned)
 
     # If an unclosed <think> block is still streaming, show only its last 2 non-empty lines
     if "<think>" in cleaned:
